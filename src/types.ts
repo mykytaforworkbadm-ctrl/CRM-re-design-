@@ -1,0 +1,131 @@
+export type ClientType = 'usual' | 'corp' | 'corp-member';
+
+export interface LockDetail {
+  source: 'Клієнт' | 'Об\'єднання' | 'РСП' | 'Маршрут' | 'Склад' | 'Корпорація';
+  reason: string;
+  startDate?: string;
+  endDate?: string;
+  isScheduled?: boolean;
+}
+
+export interface ClientRecord {
+  id: number;
+  clId: number;
+  isCorp: number;
+  corpCode: string;
+  corpName: string;
+  type: ClientType;
+  typeLabel: string;
+  isBlocked: boolean;
+  isScheduled?: boolean;
+  scheduledTime?: string;
+  clCode: string;
+  clName: string;
+  unionName: string;
+  unionId?: number;
+  mngName: string;
+  editDate: string;
+  editUser: string;
+  reason: string;
+  reasonId?: number;
+  lockDetails?: LockDetail[];
+  countUrgent: string | number;
+  countOrders: string | number;
+  sumAllOrders: string;
+  countRowsAllOrders: string | number;
+  countIgnored: string | number;
+  rspId?: number;
+  rspName?: string;
+  deptId?: number;
+  deptName?: string;
+  routeId?: number;
+  routeName?: string;
+}
+
+export interface QueueOrder {
+  id: number;
+  dateReceived: string;
+  clOrderNo: string;
+  msgId: number;
+  clientName: string;
+  clientCode: string;
+  routeName: string;
+  subId: number;
+  subCode: string;
+  subName: string;
+  fileName: string;
+  managerName: string;
+  orderedSum: number;
+  pending: string; // 'Так' | 'Ні'
+  urgentazh: string; // 'Так' | 'Ні'
+  orderCountRows: number;
+  unionName?: string;
+  corpCode?: string;
+  corpName?: string;
+}
+
+export type EntityType = 'Маршрут' | 'РСП' | 'Склад' | 'Об\'єднання';
+
+export interface ObjectLockRecord {
+  id: string;
+  targetType: EntityType;
+  targetCode: string;
+  targetName: string;
+  reason: string;
+  lockDate: string;
+  lockedBy: string;
+  startDate?: string;
+  endDate?: string;
+  isScheduled?: boolean;
+}
+
+export type AppPage = 'registry' | 'buffer' | 'objects';
+
+export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'dept' | 'rsp' | 'route' | null;
+
+export interface FilterState {
+  filterBy: FilterFieldType;
+  clientCode: string;
+  clientName: string;
+  unionId: number;
+  deptId: number;
+  rspId: number;
+  routeId: number;
+  showOnlyLocked: boolean;
+}
+
+export interface ColumnFilters {
+  type: string;
+  block: string;
+  clCode: string;
+  clName: string;
+  corpCode: string;
+  corpName: string;
+  unionName: string;
+  mngName: string;
+  editDate: string;
+  editUser: string;
+  reason: string;
+  countUrgent: string;
+  countOrders: string;
+  sumAllOrders: string;
+  countRowsAllOrders: string;
+  countIgnored: string;
+}
+
+export interface QueueColumnFilters {
+  dateReceived: string;
+  clOrderNo: string;
+  msgId: string;
+  clientName: string;
+  clientCode: string;
+  routeName: string;
+  subCode: string;
+  subName: string;
+  fileName: string;
+  managerName: string;
+  orderedSum: string;
+  pending: string;
+  urgentazh: string;
+  orderCountRows: string;
+}
