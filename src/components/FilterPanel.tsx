@@ -1,11 +1,12 @@
 import React from 'react';
-import { FilterState, FilterFieldType } from '../types';
+import { FilterState } from '../types';
 import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA } from '../data/mockData';
 
 interface FilterPanelProps {
   filters: FilterState;
   onFilterChange: (newFilters: FilterState) => void;
   onApplyFilter: () => void;
+  onResetFilters: () => void;
   onToggleLocked: () => void;
   onOpenMassAction: () => void;
 }
@@ -14,16 +15,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   onFilterChange,
   onApplyFilter,
+  onResetFilters,
   onToggleLocked,
   onOpenMassAction
 }) => {
-  const handleRadioChange = (type: FilterFieldType) => {
-    onFilterChange({
-      ...filters,
-      filterBy: type
-    });
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onApplyFilter();
@@ -34,232 +29,268 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       action="/Clients/AutoImport"
       method="post"
       name="mainForm"
-      style={{ minHeight: '300px' }}
       onSubmit={handleSubmit}
       id="main-filter-form"
+      style={{
+        backgroundColor: '#fbfbfb',
+        border: '1px solid #d5d5d5',
+        padding: '12px 16px',
+        marginBottom: 12
+      }}
     >
-      <div id="tbl_filter">
-        {/* Row 1: Client Code */}
-        <div className="row">
-          <div
-            className="form-group col-md-2 filter-title"
-            onClick={() => handleRadioChange('client_code')}
+      {/* 6 Combined Filter Fields in Clean 3-Column Grid */}
+      <div className="row" style={{ marginLeft: -8, marginRight: -8 }}>
+        {/* Field 1: Client Code */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="ClientCode"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
           >
-            <input
-              id="client_code"
-              name="FilterBy"
-              type="radio"
-              value="client_code"
-              checked={filters.filterBy === 'client_code'}
-              onChange={() => handleRadioChange('client_code')}
-            />
-            <label htmlFor="client_code">Код клієнта</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <input
-              className="form-control"
-              id="ClientCode"
-              name="ClientCode"
-              placeholder="Код клієнта"
-              type="text"
-              value={filters.clientCode}
-              disabled={filters.filterBy !== 'client_code'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, clientCode: e.target.value })
-              }
-            />
-          </div>
+            Код клієнта
+          </label>
+          <input
+            className="form-control input-sm"
+            id="ClientCode"
+            name="ClientCode"
+            placeholder="Введіть код..."
+            type="text"
+            value={filters.clientCode}
+            onChange={(e) =>
+              onFilterChange({ ...filters, clientCode: e.target.value })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          />
         </div>
 
-        {/* Row 2: Client Name */}
-        <div className="row">
-          <div
-            className="form-group col-md-2 filter-title"
-            onClick={() => handleRadioChange('client_name')}
+        {/* Field 2: Client Name */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="ClientName"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
           >
-            <input
-              id="client_name"
-              name="FilterBy"
-              type="radio"
-              value="client_name"
-              checked={filters.filterBy === 'client_name'}
-              onChange={() => handleRadioChange('client_name')}
-            />
-            <label htmlFor="client_name">Назва клієнта</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <input
-              className="form-control"
-              id="ClientName"
-              name="ClientName"
-              placeholder="Назва клієнта"
-              type="text"
-              value={filters.clientName}
-              disabled={filters.filterBy !== 'client_name'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, clientName: e.target.value })
-              }
-            />
-          </div>
+            Назва клієнта
+          </label>
+          <input
+            className="form-control input-sm"
+            id="ClientName"
+            name="ClientName"
+            placeholder="Введіть назву..."
+            type="text"
+            value={filters.clientName}
+            onChange={(e) =>
+              onFilterChange({ ...filters, clientName: e.target.value })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          />
         </div>
 
-        {/* Row 3: Union Name & Warehouse (Dept) */}
-        <div className="row">
-          <div
-            className="form-group col-md-2 filter-title"
-            onClick={() => handleRadioChange('union')}
+        {/* Field 3: Union Name */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="UnionId"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
           >
-            <input
-              id="union"
-              name="FilterBy"
-              type="radio"
-              value="union"
-              checked={filters.filterBy === 'union'}
-              onChange={() => handleRadioChange('union')}
-            />
-            <label htmlFor="union">Назва об'єднання</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <select
-              className="form-control"
-              id="UnionId"
-              name="UnionId"
-              value={filters.unionId}
-              disabled={filters.filterBy !== 'union'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, unionId: Number(e.target.value) })
-              }
-            >
-              {UNIONS_DATA.map((u) => (
-                <option key={u.value} value={u.value}>
-                  {u.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group col-md-1 filter-title" style={{ paddingLeft: '2vw' }} onClick={() => handleRadioChange('dept')}>
-            <input
-              id="dept"
-              name="FilterBy"
-              type="radio"
-              value="dept"
-              checked={filters.filterBy === 'dept'}
-              onChange={() => handleRadioChange('dept')}
-            />
-            <label htmlFor="dept">Склад</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <select
-              className="form-control"
-              id="deptId"
-              name="deptId"
-              value={filters.deptId}
-              disabled={filters.filterBy !== 'dept'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, deptId: Number(e.target.value) })
-              }
-            >
-              {DEPTS_DATA.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            Назва об'єднання
+          </label>
+          <select
+            className="form-control input-sm"
+            id="UnionId"
+            name="UnionId"
+            value={filters.unionId}
+            onChange={(e) =>
+              onFilterChange({ ...filters, unionId: Number(e.target.value) })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          >
+            {UNIONS_DATA.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Row 4: RSP & Route */}
-        <div className="row">
-          <div
-            className="form-group col-md-2 filter-title"
-            onClick={() => handleRadioChange('rsp')}
+        {/* Field 4: Warehouse (Dept) */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="deptId"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
           >
-            <input
-              id="rsp"
-              name="FilterBy"
-              type="radio"
-              value="rsp"
-              checked={filters.filterBy === 'rsp'}
-              onChange={() => handleRadioChange('rsp')}
-            />
-            <label htmlFor="rsp">РСП</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <select
-              className="form-control"
-              id="RspId"
-              name="RspId"
-              value={filters.rspId}
-              disabled={filters.filterBy !== 'rsp'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, rspId: Number(e.target.value) })
-              }
-            >
-              {RSPS_DATA.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            Склад
+          </label>
+          <select
+            className="form-control input-sm"
+            id="deptId"
+            name="deptId"
+            value={filters.deptId}
+            onChange={(e) =>
+              onFilterChange({ ...filters, deptId: Number(e.target.value) })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          >
+            {DEPTS_DATA.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <div className="form-group col-md-1 filter-title" style={{ paddingLeft: '2vw' }} onClick={() => handleRadioChange('route')}>
-            <input
-              id="route"
-              name="FilterBy"
-              type="radio"
-              value="route"
-              checked={filters.filterBy === 'route'}
-              onChange={() => handleRadioChange('route')}
-            />
-            <label htmlFor="route">Маршрут</label>
-          </div>
-          <div className="form-group col-md-2 data-value">
-            <select
-              className="form-control"
-              id="RouteId"
-              name="RouteId"
-              value={filters.routeId}
-              disabled={filters.filterBy !== 'route'}
-              onChange={(e) =>
-                onFilterChange({ ...filters, routeId: Number(e.target.value) })
-              }
-            >
-              {ROUTES_DATA.map((rt) => (
-                <option key={rt.value} value={rt.value}>
-                  {rt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Field 5: RSP */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="RspId"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
+          >
+            РСП
+          </label>
+          <select
+            className="form-control input-sm"
+            id="RspId"
+            name="RspId"
+            value={filters.rspId}
+            onChange={(e) =>
+              onFilterChange({ ...filters, rspId: Number(e.target.value) })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          >
+            {RSPS_DATA.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Field 6: Route */}
+        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+          <label
+            htmlFor="RouteId"
+            style={{ display: 'block', marginBottom: 4, fontWeight: 600, fontSize: 12, color: '#333' }}
+          >
+            Маршрут
+          </label>
+          <select
+            className="form-control input-sm"
+            id="RouteId"
+            name="RouteId"
+            value={filters.routeId}
+            onChange={(e) =>
+              onFilterChange({ ...filters, routeId: Number(e.target.value) })
+            }
+            style={{ height: 30, borderRadius: 0 }}
+          >
+            {ROUTES_DATA.map((rt) => (
+              <option key={rt.value} value={rt.value}>
+                {rt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', marginTop: 10 }}>
-        <input
-          style={{ whiteSpace: 'normal', width: 'auto', minWidth: 190 }}
-          type="submit"
-          id="btn_search"
-          className="btn btn-success"
-          value="Застосувати фільтр"
-        />
-        <input
-          style={{ marginLeft: '10px', width: 'auto', minWidth: 190 }}
-          type="button"
-          id="show_locked"
-          className="btn btn-warning"
-          value={filters.showOnlyLocked ? "Показати всіх" : "Показати заблокованих"}
-          onClick={onToggleLocked}
-        />
-        <input
-          style={{ marginLeft: '10px', width: 'auto', minWidth: 190 }}
-          type="button"
-          id="btn_mass_action"
-          className="btn btn-primary"
-          value="Масова дія"
-          onClick={onOpenMassAction}
-        />
+      {/* Action Buttons & Checkbox Bar */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          paddingTop: 10,
+          marginTop: 4,
+          borderTop: '1px solid #e7e7e7'
+        }}
+      >
+        {/* Search Actions & Checkbox */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <button
+            type="submit"
+            id="btn_search"
+            className="btn btn-success btn-sm"
+            style={{
+              padding: '6px 16px',
+              fontWeight: 'bold',
+              borderRadius: 0,
+              fontSize: 12,
+              minWidth: 150
+            }}
+          >
+            Застосувати фільтр
+          </button>
+
+          <button
+            type="button"
+            id="btn_reset"
+            className="btn btn-default btn-sm"
+            onClick={onResetFilters}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 0,
+              fontSize: 12,
+              borderColor: '#ccc',
+              backgroundColor: '#fff',
+              color: '#444'
+            }}
+            title="Очистити всі поля фільтра"
+          >
+            Скинути
+          </button>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              marginLeft: 8,
+              padding: '4px 8px',
+              backgroundColor: filters.showOnlyLocked ? '#fff3cd' : 'transparent',
+              border: filters.showOnlyLocked ? '1px solid #ffeeba' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <label
+              htmlFor="show_locked_checkbox"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                margin: 0,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                color: filters.showOnlyLocked ? '#856404' : '#555',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                id="show_locked_checkbox"
+                checked={filters.showOnlyLocked}
+                onChange={onToggleLocked}
+                style={{ margin: 0, cursor: 'pointer' }}
+              />
+              Показати тільки заблокованих
+            </label>
+          </div>
+        </div>
+
+        {/* Separated Mass Action Button */}
+        <div>
+          <button
+            type="button"
+            id="btn_mass_action"
+            className="btn btn-primary btn-sm"
+            onClick={onOpenMassAction}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 0,
+              fontSize: 12,
+              fontWeight: 'bold'
+            }}
+          >
+            Масова дія...
+          </button>
+        </div>
       </div>
     </form>
   );

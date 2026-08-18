@@ -65,43 +65,64 @@ export default function App() {
   const [modalClient, setModalClient] = useState<ClientRecord | null>(null);
   const [isMassActionOpen, setIsMassActionOpen] = useState<boolean>(false);
 
-  // Handle Main Filter Apply
-  const handleApplyFilter = () => {
+  // Core filter application logic supporting all 6 combined criteria (AND logic)
+  const applyFilterLogic = (currentFilters: FilterState) => {
     let result = [...INITIAL_CLIENTS];
 
-    if (filters.filterBy === 'client_code' && filters.clientCode) {
-      result = result.filter((c) =>
-        c.clCode.toLowerCase().includes(filters.clientCode.toLowerCase())
-      );
-    } else if (filters.filterBy === 'client_name' && filters.clientName) {
-      result = result.filter((c) =>
-        c.clName.toLowerCase().includes(filters.clientName.toLowerCase())
-      );
-    } else if (filters.filterBy === 'union' && filters.unionId > 0) {
-      result = result.filter((c) => c.unionId === filters.unionId);
-    } else if (filters.filterBy === 'dept' && filters.deptId !== 0) {
-      result = result.filter((c) => c.deptId === filters.deptId);
-    } else if (filters.filterBy === 'rsp' && filters.rspId > 0) {
-      result = result.filter((c) => c.rspId === filters.rspId);
-    } else if (filters.filterBy === 'route' && filters.routeId > 0) {
-      result = result.filter((c) => c.routeId === filters.routeId);
+    if (currentFilters.clientCode.trim()) {
+      const q = currentFilters.clientCode.trim().toLowerCase();
+      result = result.filter((c) => c.clCode.toLowerCase().includes(q));
+    }
+    if (currentFilters.clientName.trim()) {
+      const q = currentFilters.clientName.trim().toLowerCase();
+      result = result.filter((c) => c.clName.toLowerCase().includes(q));
+    }
+    if (currentFilters.unionId > 0) {
+      result = result.filter((c) => c.unionId === currentFilters.unionId);
+    }
+    if (currentFilters.deptId !== 0) {
+      result = result.filter((c) => c.deptId === currentFilters.deptId);
+    }
+    if (currentFilters.rspId > 0) {
+      result = result.filter((c) => c.rspId === currentFilters.rspId);
+    }
+    if (currentFilters.routeId > 0) {
+      result = result.filter((c) => c.routeId === currentFilters.routeId);
     }
 
-    if (filters.showOnlyLocked) {
+    if (currentFilters.showOnlyLocked) {
       result = result.filter((c) => c.isBlocked);
     }
 
     setClients(result);
   };
 
+  // Handle Main Filter Apply
+  const handleApplyFilter = () => {
+    applyFilterLogic(filters);
+  };
+
+  // Handle Filter Reset
+  const handleResetFilters = () => {
+    const resetState: FilterState = {
+      filterBy: null,
+      clientCode: '',
+      clientName: '',
+      unionId: 0,
+      deptId: 0,
+      rspId: 0,
+      routeId: 0,
+      showOnlyLocked: false
+    };
+    setFilters(resetState);
+    setClients(INITIAL_CLIENTS);
+  };
+
   const handleToggleLocked = () => {
     const nextLocked = !filters.showOnlyLocked;
-    setFilters({ ...filters, showOnlyLocked: nextLocked });
-    let result = [...INITIAL_CLIENTS];
-    if (nextLocked) {
-      result = result.filter((c) => c.isBlocked);
-    }
-    setClients(result);
+    const updated = { ...filters, showOnlyLocked: nextLocked };
+    setFilters(updated);
+    applyFilterLogic(updated);
   };
 
   // Open "Зміна блокування" Modal
@@ -294,11 +315,12 @@ export default function App() {
               <h2 style={{ fontFamily: 'fantasy' }}>Сторінка блокування автообробки</h2>
             </div>
 
-            {/* Панель фільтрів з кнопками «Застосувати фільтр», «Показати заблокованих» та «Масова дія» */}
+            {/* Панель фільтрів з комбінованим пошуком (AND-логіка), чекбоксом заблокованих та масовою дією */}
             <FilterPanel
               filters={filters}
               onFilterChange={setFilters}
               onApplyFilter={handleApplyFilter}
+              onResetFilters={handleResetFilters}
               onToggleLocked={handleToggleLocked}
               onOpenMassAction={() => setIsMassActionOpen(true)}
             />

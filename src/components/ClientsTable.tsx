@@ -51,13 +51,38 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     return true;
   });
 
-  // Sort
+  // Accurate sorting for numbers, strings, and dates
   const sortedClients = [...filteredClients].sort((a, b) => {
     if (!sortField) return 0;
-    const aVal = a[sortField] ?? '';
-    const bVal = b[sortField] ?? '';
-    if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+    const aVal = a[sortField];
+    const bVal = b[sortField];
+
+    if (aVal === bVal) return 0;
+    if (aVal === undefined || aVal === null || aVal === '') return 1;
+    if (bVal === undefined || bVal === null || bVal === '') return -1;
+
+    // Numbers
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+
+    // Booleans
+    if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+      return sortDir === 'asc' ? (aVal ? -1 : 1) : (aVal ? 1 : -1);
+    }
+
+    // Formatted sums e.g. "12 450.00"
+    if (sortField === 'sumAllOrders') {
+      const numA = parseFloat(String(aVal).replace(/\s/g, '').replace(',', '.')) || 0;
+      const numB = parseFloat(String(bVal).replace(/\s/g, '').replace(',', '.')) || 0;
+      return sortDir === 'asc' ? numA - numB : numB - numA;
+    }
+
+    // Strings
+    const strA = String(aVal).toLowerCase();
+    const strB = String(bVal).toLowerCase();
+    if (strA < strB) return sortDir === 'asc' ? -1 : 1;
+    if (strA > strB) return sortDir === 'asc' ? 1 : -1;
     return 0;
   });
 
@@ -82,34 +107,47 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     });
   };
 
+  // Modern clean single sort indicator
   const renderSortIndicator = (field: keyof ClientRecord) => {
     const isCurrent = sortField === field;
+    if (isCurrent) {
+      return (
+        <span
+          style={{
+            display: 'inline-block',
+            marginLeft: 5,
+            fontSize: 11,
+            color: '#1a568c',
+            fontWeight: 'bold',
+            verticalAlign: 'middle',
+            userSelect: 'none'
+          }}
+          title={sortDir === 'asc' ? 'Сортування: за зростанням' : 'Сортування: за спаданням'}
+        >
+          {sortDir === 'asc' ? '▲' : '▼'}
+        </span>
+      );
+    }
     return (
-      <span className="s-ico" style={{ display: 'inline-flex', marginLeft: 4 }}>
-        <span
-          style={{
-            fontSize: 9,
-            lineHeight: 1,
-            color: isCurrent && sortDir === 'asc' ? '#333' : '#bbb'
-          }}
-        >
-          ▲
-        </span>
-        <span
-          style={{
-            fontSize: 9,
-            lineHeight: 1,
-            color: isCurrent && sortDir === 'desc' ? '#333' : '#bbb'
-          }}
-        >
-          ▼
-        </span>
+      <span
+        style={{
+          display: 'inline-block',
+          marginLeft: 4,
+          fontSize: 9,
+          color: '#c5c5c5',
+          verticalAlign: 'middle',
+          userSelect: 'none',
+          letterSpacing: '-1px'
+        }}
+        title="Сортувати"
+      >
+        ▲▼
       </span>
     );
   };
 
   return (
-    <div id="clients-table-container" style={{ marginTop: 10 }}>
+    <div id="clients-table-container" style={{ marginTop: 6 }}>
       <div className="ui-jqgrid" id="gbox_gridResults" dir="ltr" style={{ width: '100%' }}>
         <div className="ui-jqgrid-view table-responsive" role="grid" id="gview_gridResults" style={{ width: '100%' }}>
           <div className="ui-jqgrid-hdiv" style={{ width: '100%' }}>
@@ -120,12 +158,12 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                     <th style={{ width: '31px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div"></div>
                     </th>
-                    <th style={{ width: '68px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('type')}>
+                    <th style={{ width: '68px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('type')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Тип {renderSortIndicator('type')}
                       </div>
                     </th>
-                    <th style={{ width: '48px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('isBlocked')}>
+                    <th style={{ width: '60px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('isBlocked')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Блок {renderSortIndicator('isBlocked')}
                       </div>
@@ -133,88 +171,89 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                     <th style={{ width: '75px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Змінити</div>
                     </th>
-                    <th style={{ width: '87px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('clCode')}>
+                    <th style={{ width: '87px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('clCode')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Код {renderSortIndicator('clCode')}
                       </div>
                     </th>
-                    <th style={{ width: '190px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('clName')}>
+                    <th style={{ width: '190px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('clName')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Назва {renderSortIndicator('clName')}
                       </div>
                     </th>
-                    <th style={{ width: '90px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('corpCode')}>
+                    <th style={{ width: '90px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('corpCode')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Код корпорації {renderSortIndicator('corpCode')}
                       </div>
                     </th>
-                    <th style={{ width: '130px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('corpName')}>
+                    <th style={{ width: '130px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('corpName')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Корпорація {renderSortIndicator('corpName')}
                       </div>
                     </th>
-                    <th style={{ width: '130px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('unionName')}>
+                    <th style={{ width: '130px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('unionName')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Об'єднання {renderSortIndicator('unionName')}
                       </div>
                     </th>
-                    <th style={{ width: '120px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('mngName')}>
+                    <th style={{ width: '120px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('mngName')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Менеджер {renderSortIndicator('mngName')}
                       </div>
                     </th>
-                    <th style={{ width: '95px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('editDate')}>
+                    <th style={{ width: '95px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('editDate')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Дата змін {renderSortIndicator('editDate')}
                       </div>
                     </th>
-                    <th style={{ width: '95px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('editUser')}>
+                    <th style={{ width: '95px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('editUser')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Змінив {renderSortIndicator('editUser')}
                       </div>
                     </th>
-                    <th style={{ width: '110px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('reason')}>
+                    <th style={{ width: '150px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('reason')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Причина {renderSortIndicator('reason')}
                       </div>
                     </th>
-                    <th style={{ width: '80px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countUrgent')}>
+                    <th style={{ width: '80px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countUrgent')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Ургентаж {renderSortIndicator('countUrgent')}
                       </div>
                     </th>
-                    <th style={{ width: '90px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countOrders')}>
+                    <th style={{ width: '90px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countOrders')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Кількість замовлень {renderSortIndicator('countOrders')}
                       </div>
                     </th>
-                    <th style={{ width: '95px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('sumAllOrders')}>
+                    <th style={{ width: '95px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('sumAllOrders')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Сума замовлень {renderSortIndicator('sumAllOrders')}
                       </div>
                     </th>
-                    <th style={{ width: '90px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countRowsAllOrders')}>
+                    <th style={{ width: '90px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countRowsAllOrders')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Кількість позицій {renderSortIndicator('countRowsAllOrders')}
                       </div>
                     </th>
-                    <th style={{ width: '70px' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countIgnored')}>
+                    <th style={{ width: '70px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('countIgnored')}>
                       <div className="ui-th-div ui-jqgrid-sortable">
                         Ігнор {renderSortIndicator('countIgnored')}
                       </div>
                     </th>
                   </tr>
 
-                  {/* Inline filter row */}
-                  <tr className="ui-search-toolbar" role="row">
-                    <th><div></div></th>
-                    <th>
-                      <table className="ui-search-table">
+                  {/* Inline filter row with neat uniform heights */}
+                  <tr className="ui-search-toolbar" role="row" style={{ height: 26 }}>
+                    <th style={{ padding: '2px 4px' }}><div></div></th>
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <select
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 3px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.type}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, type: e.target.value })}
                               >
@@ -231,13 +270,14 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <select
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 3px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.block}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, block: e.target.value })}
                               >
@@ -253,15 +293,16 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th><div></div></th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}><div></div></th>
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.clCode}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, clCode: e.target.value })}
                               />
@@ -273,14 +314,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.clName}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, clName: e.target.value })}
                               />
@@ -292,14 +334,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.corpCode}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, corpCode: e.target.value })}
                               />
@@ -311,14 +354,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.corpName}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, corpName: e.target.value })}
                               />
@@ -330,14 +374,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.unionName}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, unionName: e.target.value })}
                               />
@@ -349,14 +394,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.mngName}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, mngName: e.target.value })}
                               />
@@ -368,14 +414,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.editDate}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, editDate: e.target.value })}
                               />
@@ -387,14 +434,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.editUser}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, editUser: e.target.value })}
                               />
@@ -406,14 +454,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.reason}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, reason: e.target.value })}
                               />
@@ -425,14 +474,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.countUrgent}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, countUrgent: e.target.value })}
                               />
@@ -444,14 +494,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.countOrders}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, countOrders: e.target.value })}
                               />
@@ -461,16 +512,17 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                             </td>
                           </tr>
                         </tbody>
-                      </table>
+                          </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.sumAllOrders}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, sumAllOrders: e.target.value })}
                               />
@@ -482,14 +534,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.countRowsAllOrders}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, countRowsAllOrders: e.target.value })}
                               />
@@ -501,14 +554,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
-                    <th>
-                      <table className="ui-search-table">
+                    <th style={{ padding: '2px 4px' }}>
+                      <table className="ui-search-table" style={{ width: '100%' }}>
                         <tbody>
                           <tr>
                             <td className="ui-search-input">
                               <input
                                 type="text"
                                 className="form-control"
+                                style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
                                 value={columnFilters.countIgnored}
                                 onChange={(e) => onColumnFilterChange({ ...columnFilters, countIgnored: e.target.value })}
                               />
@@ -545,32 +599,69 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                       </td>
                       <td style={{ width: '68px', textAlign: 'center' }}>
                         {client.type === 'corp-member' ? (
-                          <span style={{ padding: '3px', color: '#fff', backgroundColor: 'rgb(38, 154, 188)', display: 'inline-block' }}>
+                          <span style={{ padding: '2px 5px', color: '#104e63', backgroundColor: '#e1f5fe', border: '1px solid #b3e5fc', display: 'inline-block', fontSize: 11 }}>
                             Член корп.
                           </span>
                         ) : client.type === 'corp' ? (
-                          <span style={{ padding: '3px', color: '#fff', backgroundColor: '#337ab7', display: 'inline-block' }}>
+                          <span style={{ padding: '2px 5px', color: '#1d456b', backgroundColor: '#e3f2fd', border: '1px solid #bbdefb', display: 'inline-block', fontSize: 11 }}>
                             Корпорація
                           </span>
                         ) : (
-                          <span>Звичайний</span>
+                          <span style={{ color: '#666', fontSize: 11 }}>Звичайний</span>
                         )}
                       </td>
-                      <td style={{ width: '48px', textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                      <td style={{ width: '60px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                           {client.isBlocked ? (
-                            <span style={{ padding: '3px', color: '#fff', backgroundColor: 'rgb(172, 41, 37)', display: 'inline-block' }}>
+                            <span
+                              style={{
+                                padding: '2px 6px',
+                                color: '#a94442',
+                                backgroundColor: '#fdf2f2',
+                                border: '1px solid #ebccd1',
+                                display: 'inline-block',
+                                fontSize: 11,
+                                fontWeight: 'bold',
+                                lineHeight: '14px',
+                                minWidth: 26,
+                                textAlign: 'center'
+                              }}
+                            >
                               Так
                             </span>
                           ) : (
-                            <span style={{ padding: '3px', color: '#fff', backgroundColor: '#5cb85c', display: 'inline-block' }}>
+                            <span
+                              style={{
+                                padding: '2px 6px',
+                                color: '#2e6b30',
+                                backgroundColor: '#f3faf3',
+                                border: '1px solid #d4ecd5',
+                                display: 'inline-block',
+                                fontSize: 11,
+                                lineHeight: '14px',
+                                minWidth: 26,
+                                textAlign: 'center'
+                              }}
+                            >
                               Ні
                             </span>
                           )}
                           {client.isScheduled && (
                             <span
-                              title={`Заплановане блокування: ${client.scheduledTime || 'майбутній час'}`}
-                              style={{ fontSize: 13, cursor: 'help' }}
+                              title={`Заплановане блокування на ${client.scheduledTime || '20.08.2026 20:00'}`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                cursor: 'help',
+                                padding: '1px 3px',
+                                color: '#8a6d3b',
+                                backgroundColor: '#fcf8e3',
+                                border: '1px solid #faebcc',
+                                lineHeight: 1,
+                                userSelect: 'none'
+                              }}
                             >
                               ⏱
                             </span>
@@ -581,7 +672,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         <button
                           type="button"
                           className="btn btn-primary changeLock"
-                          style={{ padding: '3px 8px', fontSize: 12 }}
+                          style={{ padding: '2px 8px', fontSize: 11, borderRadius: 0 }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onOpenChangeLock(client);
@@ -598,10 +689,10 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                       <td style={{ width: '120px' }} title={client.mngName}>{client.mngName}</td>
                       <td style={{ width: '95px' }}>{client.editDate}</td>
                       <td style={{ width: '95px' }} title={client.editUser}>{client.editUser}</td>
-                      <td style={{ width: '150px', fontSize: 11, lineHeight: 1.3 }}>
+                      <td style={{ width: '150px', fontSize: 11, lineHeight: 1.35 }}>
                         {client.lockDetails && client.lockDetails.length > 0 ? (
                           client.lockDetails.map((detail, idx) => (
-                            <div key={idx} style={{ marginBottom: idx < client.lockDetails!.length - 1 ? 3 : 0 }}>
+                            <div key={idx} style={{ marginBottom: idx < client.lockDetails!.length - 1 ? 4 : 0 }}>
                               <span
                                 style={{
                                   fontWeight: 'bold',
