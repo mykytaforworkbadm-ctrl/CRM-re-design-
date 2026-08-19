@@ -11,9 +11,10 @@ import { ClientsTable } from './components/ClientsTable';
 import { ChangeLockModal } from './components/ChangeLockModal';
 import { QueueOrdersPage } from './components/QueueOrdersPage';
 import { ObjectLocksPage } from './components/ObjectLocksPage';
+import { UnlockedQueueOrdersPage } from './components/UnlockedQueueOrdersPage';
 import { MassActionModal } from './components/MassActionModal';
-import { INITIAL_CLIENTS, INITIAL_OBJECT_LOCKS, QUEUE_ORDERS } from './data/mockData';
-import { ClientRecord, FilterState, ColumnFilters, AppPage, ObjectLockRecord, QueueOrder, EntityType } from './types';
+import { INITIAL_CLIENTS, INITIAL_OBJECT_LOCKS, QUEUE_ORDERS, UNLOCKED_QUEUE_ORDERS } from './data/mockData';
+import { ClientRecord, FilterState, ColumnFilters, AppPage, ObjectLockRecord, QueueOrder, UnlockedQueueOrder, EntityType } from './types';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<'UA' | 'RU'>('UA');
@@ -23,6 +24,7 @@ export default function App() {
   const [clients, setClients] = useState<ClientRecord[]>(INITIAL_CLIENTS);
   const [objectLocks, setObjectLocks] = useState<ObjectLockRecord[]>(INITIAL_OBJECT_LOCKS);
   const [orders] = useState<QueueOrder[]>(QUEUE_ORDERS);
+  const [unlockedOrders] = useState<UnlockedQueueOrder[]>(UNLOCKED_QUEUE_ORDERS);
 
   // Selected client & drilldown states
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(INITIAL_CLIENTS[1] || null);
@@ -320,6 +322,7 @@ export default function App() {
         }}
         bufferCount={orders.length}
         objectLocksCount={objectLocks.length}
+        unlockedQueueCount={unlockedOrders.length}
       />
 
       {/* Page Content */}
@@ -369,6 +372,13 @@ export default function App() {
             objectLocks={objectLocks}
             onRemoveLock={handleRemoveObjectLock}
             onOpenMassAction={() => setIsMassActionOpen(true)}
+          />
+        )}
+
+        {/* VIEW 4: Замовлення у черзі (розблокування) */}
+        {currentPage === 'unlocked-queue' && (
+          <UnlockedQueueOrdersPage
+            orders={unlockedOrders}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
-import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA } from '../data/mockData';
+import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA } from '../data/mockData';
 
 interface MassActionModalProps {
   isOpen: boolean;
@@ -33,6 +33,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
   // Search filters per tab
   const [clientSearch, setClientSearch] = useState<string>('');
   const [clientUnionFilter, setClientUnionFilter] = useState<number>(0);
+  const [clientCorpFilter, setClientCorpFilter] = useState<string>('all');
   const [routeSearch, setRouteSearch] = useState<string>('');
   const [rspSearch, setRspSearch] = useState<string>('');
   const [deptSearch, setDeptSearch] = useState<string>('');
@@ -47,13 +48,17 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
   // Filtered lists
   const filteredClients = clients.filter((c) => {
     if (clientUnionFilter > 0 && c.unionId !== clientUnionFilter) return false;
+    if (clientCorpFilter !== 'all') {
+      if (c.corpCode !== clientCorpFilter && c.corpName !== clientCorpFilter) return false;
+    }
     if (clientSearch) {
       const q = clientSearch.toLowerCase();
       return (
         c.clCode.toLowerCase().includes(q) ||
         c.clName.toLowerCase().includes(q) ||
         c.corpCode.toLowerCase().includes(q) ||
-        c.corpName.toLowerCase().includes(q)
+        c.corpName.toLowerCase().includes(q) ||
+        c.unionName.toLowerCase().includes(q)
       );
     }
     return true;
@@ -209,24 +214,34 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
               {/* Tab 1: Clients */}
               {activeTab === 'clients' && (
                 <div>
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                     <input
                       type="text"
                       className="form-control"
                       placeholder="Пошук клієнта за кодом, назвою, корпорацією..."
-                      style={{ flex: 2 }}
+                      style={{ flex: 1.8 }}
                       value={clientSearch}
                       onChange={(e) => setClientSearch(e.target.value)}
                     />
                     <select
                       className="form-control"
-                      style={{ flex: 1 }}
+                      style={{ flex: 1.1 }}
                       value={clientUnionFilter}
                       onChange={(e) => setClientUnionFilter(Number(e.target.value))}
                     >
                       <option value={0}>Всі об'єднання</option>
                       {UNIONS_DATA.filter((u) => u.value !== 0).map((u) => (
                         <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="form-control"
+                      style={{ flex: 1.1 }}
+                      value={clientCorpFilter}
+                      onChange={(e) => setClientCorpFilter(e.target.value)}
+                    >
+                      {CORPORATIONS_DATA.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
                       ))}
                     </select>
                   </div>
@@ -242,10 +257,11 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                               onChange={handleToggleSelectAll}
                             />
                           </th>
-                          <th style={{ width: 70 }}>Код</th>
+                          <th style={{ width: 65 }}>Код</th>
                           <th>Назва клієнта</th>
-                          <th>Об'єднання / Корпорація</th>
-                          <th style={{ width: 80 }}>Статус</th>
+                          <th style={{ width: 140 }}>Об'єднання</th>
+                          <th style={{ width: 150 }}>Корпорація</th>
+                          <th style={{ width: 75, textAlign: 'center' }}>Статус</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -272,8 +288,9 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                               </td>
                               <td>{client.clCode}</td>
                               <td>{client.clName}</td>
-                              <td>{client.unionName || client.corpName || '—'}</td>
-                              <td>
+                              <td>{client.unionName || '—'}</td>
+                              <td>{client.corpName || '—'}</td>
+                              <td style={{ textAlign: 'center' }}>
                                 {client.isBlocked ? (
                                   <span style={{ color: '#ac2925', fontWeight: 'bold' }}>Блок</span>
                                 ) : (

@@ -6,18 +6,21 @@ interface SubNavbarProps {
   onPageChange: (page: AppPage) => void;
   bufferCount?: number;
   objectLocksCount?: number;
+  unlockedQueueCount?: number;
 }
 
 export const SubNavbar: React.FC<SubNavbarProps> = ({
   currentPage,
   onPageChange,
   bufferCount,
-  objectLocksCount
+  objectLocksCount,
+  unlockedQueueCount
 }) => {
   const tabs: { id: AppPage; label: string; count?: number }[] = [
     { id: 'registry', label: 'Реєстр блокувань' },
     { id: 'buffer', label: 'Замовлення у черзі (буфер)', count: bufferCount },
-    { id: 'objects', label: 'Блокування об\'єктів', count: objectLocksCount }
+    { id: 'objects', label: 'Блокування об\'єктів', count: objectLocksCount },
+    { id: 'unlocked-queue', label: 'Замовлення у черзі (розблокування)', count: unlockedQueueCount }
   ];
 
   return (

@@ -79,7 +79,43 @@ export interface ObjectLockRecord {
   isScheduled?: boolean;
 }
 
-export type AppPage = 'registry' | 'buffer' | 'objects';
+export type AppPage = 'registry' | 'buffer' | 'objects' | 'unlocked-queue';
+
+export type ProcessingStatus =
+  | 'Заблоковано'
+  | 'В очікуванні опрацювання'
+  | 'В процесі опрацювання'
+  | 'Опрацьовано';
+
+export type BlockingReasonType =
+  | 'Блокування НКЦ'
+  | 'Частковий кредитний ліміт'
+  | 'Дебіторська заборгованість'
+  | 'Кредитний ліміт';
+
+export interface UnlockedQueueOrder {
+  id: number;
+  dateReceived: string; // Дата надходження замовлення
+  clientCode: string; // Код клієнта
+  clientName: string; // Назва клієнта
+  routeName: string; // Маршрут
+  subCode: string; // Код підрозділу
+  subName: string; // Назва підрозділу
+  managerName: string; // Менеджер клієнта
+  clOrderNo: string; // Номер замовлення клієнта
+  lockDate: string; // Дата блокування
+  lockUser: string; // Змінив (блокування)
+  lockReason: BlockingReasonType | string; // Причина блокування
+  lockTarget: string; // Об'єкт блокування
+  unlockDate: string; // Дата розблокування
+  unlockUser: string; // Змінив (розблокування)
+  ignored: string; // Ігнорування
+  urgentazh: string; // Ургентаж
+  mzkOrderNo: string; // Номер замовлення в МЗК
+  processingStatus: ProcessingStatus; // Статус опрацювання
+  integrationError: string; // Помилка, що виникла в процесі інтеграції
+  statusComment: string; // Коментар до статусу
+}
 
 export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'dept' | 'rsp' | 'route' | null;
 
