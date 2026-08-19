@@ -132,21 +132,37 @@ export default function App() {
   };
 
   // Save single lock change
-  const handleSaveLock = (clientId: number, isBlocked: boolean, reason: string) => {
+  const handleSaveLock = (
+    clientId: number,
+    isBlocked: boolean,
+    reason: string,
+    startDateTime?: string,
+    endDateTime?: string
+  ) => {
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const isScheduled = isBlocked && Boolean(startDateTime || endDateTime);
 
     setClients((prev) =>
       prev.map((c) => {
         if (c.id === clientId) {
           const newLockDetails = isBlocked
-            ? [{ source: 'Клієнт' as const, reason: reason || 'Кредитный лимит' }]
+            ? [
+                {
+                  source: 'Клієнт' as const,
+                  reason: reason || 'Кредитный лимит',
+                  isScheduled,
+                  startDate: startDateTime,
+                  endDate: endDateTime
+                }
+              ]
             : [];
           return {
             ...c,
             isBlocked,
-            isScheduled: false,
+            isScheduled,
+            scheduledTime: startDateTime ? startDateTime.replace('T', ' ') : undefined,
             reason: isBlocked ? (reason || 'Кредитный лимит') : '',
             lockDetails: newLockDetails,
             editDate: formattedDate,
@@ -361,11 +377,16 @@ export default function App() {
       <ChangeLockModal
         isOpen={isChangeLockOpen}
         client={modalClient}
+        objectLocks={objectLocks}
         onClose={() => setIsChangeLockOpen(false)}
         onSave={handleSaveLock}
         onOpenQueueOrders={(c) => {
           setIsChangeLockOpen(false);
           handleDrilldownBuffer(c);
+        }}
+        onNavigateToObjectLocks={() => {
+          setIsChangeLockOpen(false);
+          setCurrentPage('objects');
         }}
       />
 
