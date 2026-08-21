@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
-import { SubNavbar } from './components/SubNavbar';
 import { FilterPanel } from './components/FilterPanel';
 import { ClientsTable } from './components/ClientsTable';
 import { ChangeLockModal } from './components/ChangeLockModal';
@@ -18,7 +17,38 @@ import { ClientRecord, FilterState, ColumnFilters, AppPage, ObjectLockRecord, Qu
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<'UA' | 'RU'>('UA');
-  const [currentPage, setCurrentPage] = useState<AppPage>('registry');
+  
+  // Page state with hash initialization
+  const getPageFromHash = (): AppPage => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash.includes('buffer')) return 'buffer';
+    if (hash.includes('object')) return 'objects';
+    if (hash.includes('unlocked')) return 'unlocked-queue';
+    return 'registry';
+  };
+
+  const [currentPage, setCurrentPage] = useState<AppPage>(getPageFromHash);
+
+  // Sync hash changes
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentPage(getPageFromHash());
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (page: AppPage) => {
+    if (page === 'registry') window.location.hash = '/auto-processing/client-locks';
+    else if (page === 'buffer') window.location.hash = '/auto-processing/buffer-queue';
+    else if (page === 'objects') window.location.hash = '/auto-processing/object-locks';
+    else if (page === 'unlocked-queue') window.location.hash = '/auto-processing/unlocked-queue';
+    
+    if (page !== 'buffer') {
+      setDrilldownClient(null);
+    }
+    setCurrentPage(page);
+  };
 
   // Core records
   const [clients, setClients] = useState<ClientRecord[]>(INITIAL_CLIENTS);
@@ -179,7 +209,7 @@ export default function App() {
   // Navigate to Buffer page from client row or modal
   const handleDrilldownBuffer = (client: ClientRecord) => {
     setDrilldownClient(client);
-    setCurrentPage('buffer');
+    navigateTo('buffer');
   };
 
   // Remove Object Lock
@@ -303,26 +333,12 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
-      {/* 1. Верхнє меню додатку (шапка) */}
+      {/* 1. Верхнє меню додатку (шапка) з випадаючим списком сторінок Автообробки */}
       <Navbar
         currentLang={currentLang}
         onLangChange={(lang) => setCurrentLang(lang)}
-      />
-
-      {/* 2. Другий плоский ряд навігації розділів CRM */}
-      <SubNavbar
         currentPage={currentPage}
-        onPageChange={(page) => {
-          if (page === 'buffer' && drilldownClient) {
-            // Keep drilldown
-          } else if (page !== 'buffer') {
-            setDrilldownClient(null);
-          }
-          setCurrentPage(page);
-        }}
-        bufferCount={orders.length}
-        objectLocksCount={objectLocks.length}
-        unlockedQueueCount={unlockedOrders.length}
+        onNavigate={navigateTo}
       />
 
       {/* Page Content */}
