@@ -117,7 +117,25 @@ export interface UnlockedQueueOrder {
   statusComment: string; // Коментар до статусу
 }
 
-export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'dept' | 'rsp' | 'route' | null;
+export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'rsp' | 'dept' | 'route';
+
+export interface EntityRegistryRow {
+  id: string | number;
+  type: EntityType;
+  code: string;
+  name: string;
+  isBlocked: boolean;
+  isScheduled?: boolean;
+  scheduledTime?: string;
+  startDate?: string;
+  endDate?: string;
+  editDate: string;
+  editUser: string;
+  reason: string;
+  countOrders: string | number;
+  sumOrders: string;
+  countRows: string | number;
+}
 
 export interface FilterState {
   filterBy: FilterFieldType;
