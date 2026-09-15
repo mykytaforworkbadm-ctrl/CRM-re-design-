@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { FilterPanel } from './components/FilterPanel';
 import { ClientsTable } from './components/ClientsTable';
@@ -80,6 +80,7 @@ export default function App() {
   // Selected client & drilldown states
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(INITIAL_CLIENTS[1] || null);
   const [drilldownClient, setDrilldownClient] = useState<ClientRecord | null>(null);
+  const [drilldownShowIgnoredOnly, setDrilldownShowIgnoredOnly] = useState<boolean>(false);
 
   // Main filter panel state with 6 radio choices, defaulting to 'client_code'
   const [filters, setFilters] = useState<FilterState>({
@@ -121,6 +122,17 @@ export default function App() {
   const [modalObjectRow, setModalObjectRow] = useState<EntityRegistryRow | null>(null);
 
   const [isMassActionOpen, setIsMassActionOpen] = useState<boolean>(false);
+  const [massActionResultMessage, setMassActionResultMessage] = useState<string | null>(null);
+
+  // Auto-dismiss mass action result alert after 5 seconds
+  useEffect(() => {
+    if (massActionResultMessage) {
+      const timer = setTimeout(() => {
+        setMassActionResultMessage(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [massActionResultMessage]);
 
   // Core filter application logic for clients
   const applyFilterLogic = (currentFilters: FilterState) => {
@@ -133,10 +145,6 @@ export default function App() {
     if (currentFilters.filterBy === 'client_name' && currentFilters.clientName.trim()) {
       const q = currentFilters.clientName.trim().toLowerCase();
       result = result.filter((c) => c.clName.toLowerCase().includes(q));
-    }
-
-    if (currentFilters.showOnlyLocked) {
-      result = result.filter((c) => c.isBlocked);
     }
 
     setClients(result);
@@ -159,7 +167,9 @@ export default function App() {
       deptId: 0,
       rspId: 0,
       routeId: 0,
-      showOnlyLocked: false
+      showOnlyLocked: false,
+      showScheduledLocks: false,
+      showIgnoredOrders: false
     };
     setFilters(resetState);
     setClients(INITIAL_CLIENTS);
@@ -167,11 +177,12 @@ export default function App() {
 
   const handleToggleLocked = () => {
     const nextLocked = !filters.showOnlyLocked;
-    const updated = { ...filters, showOnlyLocked: nextLocked };
+    const updated = {
+      ...filters,
+      showOnlyLocked: nextLocked,
+      ...(nextLocked ? { showIgnoredOrders: false } : {})
+    };
     setFilters(updated);
-    if (filters.filterBy === 'client_code' || filters.filterBy === 'client_name') {
-      applyFilterLogic(updated);
-    }
   };
 
   // Open "Зміна блокування" Modal for client
@@ -340,8 +351,9 @@ export default function App() {
   };
 
   // Navigate to Buffer page from client row or modal
-  const handleDrilldownBuffer = (client: ClientRecord) => {
+  const handleDrilldownBuffer = (client: ClientRecord, showIgnoredOnly?: boolean) => {
     setDrilldownClient(client);
+    setDrilldownShowIgnoredOnly(Boolean(showIgnoredOnly));
     navigateTo('buffer');
   };
 
@@ -368,6 +380,45 @@ export default function App() {
     }
   };
 
+  // Update Scheduled Lock from Objects Page (Requirement 2.8)
+  const handleUpdateObjectLock = (updatedLock: ObjectLockRecord) => {
+    setObjectLocks((prev) =>
+      prev.map((l) => (l.id === updatedLock.id ? updatedLock : l))
+    );
+
+    // Cascade update to clients
+    setClients((prev) =>
+      prev.map((c) => {
+        let matches = false;
+        if (updatedLock.targetType === 'Об\'єднання' && (String(c.unionId) === updatedLock.targetCode || c.unionName === updatedLock.targetName)) matches = true;
+        if (updatedLock.targetType === 'РСП' && (String(c.rspId) === updatedLock.targetCode || c.rspName === updatedLock.targetName)) matches = true;
+        if (updatedLock.targetType === 'Склад' && (String(c.deptId) === updatedLock.targetCode || c.deptName === updatedLock.targetName)) matches = true;
+        if (updatedLock.targetType === 'Маршрут' && (String(c.routeId) === updatedLock.targetCode || c.routeName === updatedLock.targetName)) matches = true;
+
+        if (matches && c.lockDetails) {
+          const updatedDetails = c.lockDetails.map((ld) => {
+            if (ld.source === updatedLock.targetType) {
+              return {
+                ...ld,
+                reason: updatedLock.reason,
+                startDate: updatedLock.startDate,
+                endDate: updatedLock.endDate,
+                isScheduled: updatedLock.isScheduled
+              };
+            }
+            return ld;
+          });
+          return {
+            ...c,
+            reason: updatedLock.reason,
+            lockDetails: updatedDetails
+          };
+        }
+        return c;
+      })
+    );
+  };
+
   // Mass Action Handler
   const handleApplyMassAction = (
     entityType: 'clients' | 'routes' | 'rsps' | 'depts',
@@ -375,13 +426,56 @@ export default function App() {
     action: 'lock' | 'unlock',
     reason: string,
     startDateTime?: string,
-    endDateTime?: string
+    endDateTime?: string,
+    totalSelectedCount?: number,
+    conflictCount: number = 0
   ) => {
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const isLocking = action === 'lock';
     const isScheduled = isLocking && Boolean(startDateTime || endDateTime);
+
+    if (isLocking) {
+      const lockedCount = selectedIds.length;
+      let msg = `Заблоковано ${lockedCount} об'єктів`;
+      if (conflictCount > 0) {
+        msg += `, ${conflictCount} пропущено через наявні блокування`;
+      }
+      setMassActionResultMessage(msg);
+    } else {
+      // Unlocking: determine how many actually had active locks
+      let activeUnlockedCount = 0;
+      let notLockedCount = 0;
+
+      if (entityType === 'clients') {
+        const idSet = new Set(selectedIds.map(Number));
+        selectedIds.forEach((id) => {
+          const c = clients.find((item) => item.id === Number(id));
+          if (c && (c.isBlocked || c.isScheduled)) {
+            activeUnlockedCount++;
+          } else {
+            notLockedCount++;
+          }
+        });
+      } else {
+        const targetType = entityType === 'routes' ? 'Маршрут' : entityType === 'rsps' ? 'РСП' : 'Склад';
+        selectedIds.forEach((id) => {
+          const l = objectLocks.find((item) => item.targetType === targetType && item.targetCode === String(id));
+          if (l) {
+            activeUnlockedCount++;
+          } else {
+            notLockedCount++;
+          }
+        });
+      }
+
+      let msg = `Розблоковано ${activeUnlockedCount} об'єктів`;
+      if (notLockedCount > 0) {
+        msg += `, ще ${notLockedCount} не мали активного блокування`;
+      }
+      setMassActionResultMessage(msg);
+    }
 
     if (entityType === 'clients') {
       const idSet = new Set(selectedIds.map(Number));
@@ -404,6 +498,8 @@ export default function App() {
               isBlocked: isLocking,
               isScheduled,
               scheduledTime: startDateTime ? startDateTime.replace('T', ' ') : undefined,
+              scheduledStart: startDateTime ? startDateTime.replace('T', ' ') : undefined,
+              scheduledEnd: endDateTime ? endDateTime.replace('T', ' ') : undefined,
               reason: isLocking ? reason : '',
               lockDetails: newLockDetails,
               editDate: formattedDate,
@@ -747,6 +843,40 @@ export default function App() {
               </h2>
             </div>
 
+            {/* Сповіщення про результат масової дії */}
+            {massActionResultMessage && (
+              <div
+                className="alert alert-info alert-dismissible"
+                style={{
+                  marginBottom: 12,
+                  padding: '10px 15px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: '#d9edf7',
+                  borderColor: '#bce8f1',
+                  color: '#31708f',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="glyphicon glyphicon-info-sign" style={{ fontSize: 16 }}></span>
+                  <span>{massActionResultMessage}</span>
+                </div>
+                <button
+                  type="button"
+                  className="close"
+                  style={{ fontSize: 18, color: '#31708f', opacity: 0.8, textShadow: 'none' }}
+                  onClick={() => setMassActionResultMessage(null)}
+                  title="Закрити сповіщення"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {/* Панель фільтрів із 6 радіокнопками та кнопками керування */}
             <FilterPanel
               filters={filters}
@@ -769,6 +899,9 @@ export default function App() {
                 onDrilldownBuffer={handleDrilldownBuffer}
                 columnFilters={columnFilters}
                 onColumnFilterChange={setColumnFilters}
+                showScheduledLocks={Boolean(filters.showScheduledLocks)}
+                showIgnoredOrders={Boolean(filters.showIgnoredOrders)}
+                showOnlyLocked={Boolean(filters.showOnlyLocked)}
               />
             )}
 
@@ -791,7 +924,12 @@ export default function App() {
           <QueueOrdersPage
             orders={orders}
             initialClientFilter={drilldownClient}
-            onClearInitialFilter={() => setDrilldownClient(null)}
+            initialShowIgnoredOnly={drilldownShowIgnoredOnly}
+            onClearInitialFilter={() => {
+              setDrilldownClient(null);
+              setDrilldownShowIgnoredOnly(false);
+            }}
+            onNavigateBack={() => navigateTo('registry')}
           />
         )}
 
@@ -801,6 +939,8 @@ export default function App() {
             objectLocks={objectLocks}
             onRemoveLock={handleRemoveObjectLock}
             onOpenMassAction={() => setIsMassActionOpen(true)}
+            onUpdateLock={handleUpdateObjectLock}
+            onNavigateBack={() => navigateTo('registry')}
           />
         )}
 
@@ -808,6 +948,7 @@ export default function App() {
         {currentPage === 'unlocked-queue' && (
           <UnlockedQueueOrdersPage
             orders={unlockedOrders}
+            onNavigateBack={() => navigateTo('registry')}
           />
         )}
       </div>
@@ -825,7 +966,7 @@ export default function App() {
         }}
         onNavigateToObjectLocks={() => {
           setIsChangeLockOpen(false);
-          setCurrentPage('objects');
+          navigateTo('objects');
         }}
       />
 
@@ -842,6 +983,7 @@ export default function App() {
         isOpen={isMassActionOpen}
         onClose={() => setIsMassActionOpen(false)}
         clients={clients}
+        objectLocks={objectLocks}
         onApplyMassAction={handleApplyMassAction}
       />
     </div>

@@ -3,9 +3,10 @@ import { UnlockedQueueOrder, ProcessingStatus } from '../types';
 
 interface UnlockedQueueOrdersPageProps {
   orders: UnlockedQueueOrder[];
+  onNavigateBack?: () => void;
 }
 
-export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = ({ orders }) => {
+export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = ({ orders, onNavigateBack }) => {
   // Top filter states
   const [clientSearch, setClientSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -204,6 +205,15 @@ export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = (
           border: '1px solid #d6e9c6'
         };
         break;
+      case 'Ігноровано':
+        tooltip = 'Замовлення позначено як ігнороване (не передається в опрацювання)';
+        badgeStyle = {
+          ...badgeStyle,
+          backgroundColor: '#fff3cd',
+          color: '#856404',
+          border: '1px solid #ffeeba'
+        };
+        break;
     }
 
     return (
@@ -216,13 +226,28 @@ export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = (
   return (
     <div id="unlocked-queue-page" style={{ padding: '0 15px' }}>
       {/* Title */}
-      <div className="text-center" style={{ marginBottom: 12 }}>
-        <h2 style={{ fontFamily: 'fantasy', margin: '10px 0 4px 0' }}>
-          Замовлення у черзі (розблокування)
-        </h2>
-        <div style={{ fontSize: '12px', color: '#666' }}>
-          Реєстр замовлень, які вийшли з буфера після зняття блокування з клієнта та проходять повторне автоопрацювання (тільки для перегляду)
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 10 }}>
+        <div style={{ width: onNavigateBack ? 220 : 0 }}>
+          {onNavigateBack && (
+            <button
+              type="button"
+              className="btn btn-default btn-sm"
+              onClick={onNavigateBack}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+            >
+              <span>←</span> Назад до реєстру блокувань
+            </button>
+          )}
         </div>
+        <div className="text-center" style={{ flex: 1 }}>
+          <h2 style={{ fontFamily: 'fantasy', margin: '0 0 4px 0' }}>
+            Замовлення у черзі (розблокування)
+          </h2>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            Реєстр замовлень, які вийшли з буфера після зняття блокування з клієнта та проходять повторне автоопрацювання (тільки для перегляду)
+          </div>
+        </div>
+        <div style={{ width: onNavigateBack ? 220 : 0 }}></div>
       </div>
 
       {/* Top Filter Panel */}
@@ -270,6 +295,7 @@ export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = (
                 <option value="В очікуванні опрацювання">В очікуванні опрацювання</option>
                 <option value="В процесі опрацювання">В процесі опрацювання</option>
                 <option value="Опрацьовано">Опрацьовано (завершено)</option>
+                <option value="Ігноровано">Ігноровано</option>
               </select>
             </div>
 

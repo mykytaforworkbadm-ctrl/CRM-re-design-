@@ -43,6 +43,21 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
   if (!isOpen || !client) return null;
 
   const handleSave = () => {
+    // Conflict Alert (Requirement 2.6)
+    if (isBlocked && client.isBlocked && client.reason && reason !== client.reason) {
+      if (!window.confirm(`Увага! Для клієнта вже встановлено блокування: "${client.reason}".\n\nЗбереження оновить причину та параметри блокування. Продовжити?`)) {
+        return;
+      }
+    } else if (isBlocked && client.isScheduled && !startDateTime) {
+      if (!window.confirm(`Увага! Для клієнта заплановано блокування за розкладом.\n\nВстановлення негайного блокування скасує розклад. Продовжити?`)) {
+        return;
+      }
+    } else if (!isBlocked && !client.isBlocked && !client.isScheduled) {
+      if (!window.confirm(`Увага! Клієнт наразі НЕ заблокований.\n\nБажаєте підтвердити операцію?`)) {
+        return;
+      }
+    }
+
     onSave(
       client.id,
       isBlocked,

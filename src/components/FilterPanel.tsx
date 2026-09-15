@@ -441,6 +441,87 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               Показати тільки заблокованих
             </label>
           </div>
+
+          {/* New Checkbox: Показати заплановані блокування */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '4px 8px',
+              backgroundColor: filters.showScheduledLocks ? '#e8f4fd' : 'transparent',
+              border: filters.showScheduledLocks ? '1px solid #b8daff' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <label
+              htmlFor="show_scheduled_checkbox"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                margin: 0,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                color: filters.showScheduledLocks ? '#004085' : '#555',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                id="show_scheduled_checkbox"
+                checked={Boolean(filters.showScheduledLocks)}
+                onChange={(e) =>
+                  onFilterChange({ ...filters, showScheduledLocks: e.target.checked })
+                }
+                style={{ margin: 0, cursor: 'pointer' }}
+              />
+              Показати заплановані блокування
+            </label>
+          </div>
+
+          {/* Checkbox: Показати проігноровані замовлення */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '4px 8px',
+              backgroundColor: filters.showIgnoredOrders ? '#fcf8e3' : 'transparent',
+              border: filters.showIgnoredOrders ? '1px solid #faebcc' : '1px solid transparent',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <label
+              htmlFor="show_ignored_checkbox"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                margin: 0,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                color: filters.showIgnoredOrders ? '#8a6d3b' : '#555',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                id="show_ignored_checkbox"
+                checked={Boolean(filters.showIgnoredOrders)}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  onFilterChange({
+                    ...filters,
+                    showIgnoredOrders: isChecked,
+                    ...(isChecked ? { showOnlyLocked: false } : {})
+                  });
+                }}
+                style={{ margin: 0, cursor: 'pointer' }}
+              />
+              Показати проігноровані замовлення
+            </label>
+          </div>
         </div>
 
         {/* Separated Mass Action Button */}

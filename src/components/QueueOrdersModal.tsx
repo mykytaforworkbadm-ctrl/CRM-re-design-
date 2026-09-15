@@ -33,6 +33,31 @@ export const QueueOrdersModal: React.FC<QueueOrdersModalProps> = ({
     orderCountRows: ''
   });
 
+  // Resizing state (Requirement 2.1)
+  const [dimensions, setDimensions] = useState({ width: 1100, height: 620 });
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = dimensions.width;
+    const startH = dimensions.height;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newW = Math.max(700, Math.min(window.innerWidth - 30, startW + (moveEvent.clientX - startX)));
+      const newH = Math.max(450, Math.min(window.innerHeight - 40, startH + (moveEvent.clientY - startY)));
+      setDimensions({ width: newW, height: newH });
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
   if (!isOpen) return null;
 
   // Filter orders by client if client is given, or show matching queue orders
@@ -94,8 +119,8 @@ export const QueueOrdersModal: React.FC<QueueOrdersModalProps> = ({
         style={{ zIndex: 1055, display: 'block' }}
         role="dialog"
       >
-        <div className="modal-dialog block_orders" style={{ width: '85%', maxWidth: '1280px', marginTop: 25 }}>
-          <div className="modal-content panel panel-info">
+        <div className="modal-dialog block_orders" style={{ width: `${dimensions.width}px`, maxWidth: '96vw', marginTop: 20 }}>
+          <div className="modal-content panel panel-info" style={{ position: 'relative' }}>
             <div className="modal-header panel-heading">
               <h4 className="modal-title">Замовлення</h4>
               <button
@@ -624,6 +649,32 @@ export const QueueOrdersModal: React.FC<QueueOrdersModalProps> = ({
               <button className="btn btn-default" type="button" onClick={onClose}>
                 Закрити
               </button>
+            </div>
+
+            {/* Resize Grip Handle at bottom-right corner (Requirement 2.1) */}
+            <div
+              onMouseDown={handleResizeMouseDown}
+              style={{
+                position: 'absolute',
+                right: 2,
+                bottom: 2,
+                width: 15,
+                height: 15,
+                cursor: 'se-resize',
+                zIndex: 10,
+                opacity: 0.6,
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'flex-end',
+                padding: 1
+              }}
+              title="Потягніть для зміни розміру вікна"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12">
+                <line x1="11" y1="2" x2="2" y2="11" stroke="#555" strokeWidth="1.2" />
+                <line x1="11" y1="6" x2="6" y2="11" stroke="#555" strokeWidth="1.2" />
+                <line x1="11" y1="10" x2="10" y2="11" stroke="#555" strokeWidth="1.2" />
+              </svg>
             </div>
           </div>
         </div>

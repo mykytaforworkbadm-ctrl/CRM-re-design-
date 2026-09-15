@@ -6,10 +6,20 @@ interface ClientsTableProps {
   selectedClientId: number | null;
   onSelectClient: (client: ClientRecord) => void;
   onOpenChangeLock: (client: ClientRecord) => void;
-  onDrilldownBuffer?: (client: ClientRecord) => void;
+  onDrilldownBuffer?: (client: ClientRecord, showIgnoredOnly?: boolean) => void;
   columnFilters: ColumnFilters;
   onColumnFilterChange: (filters: ColumnFilters) => void;
+  showScheduledLocks?: boolean;
+  showIgnoredOrders?: boolean;
+  showOnlyLocked?: boolean;
 }
+
+export const getScheduledObject = (client: ClientRecord): string => {
+  if (client.scheduledObject) return client.scheduledObject;
+  const scheduledDetail = client.lockDetails?.find((ld) => ld.isScheduled);
+  if (scheduledDetail) return scheduledDetail.source;
+  return 'Клієнт';
+};
 
 export const ClientsTable: React.FC<ClientsTableProps> = ({
   clients,
@@ -19,6 +29,9 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   onDrilldownBuffer,
   columnFilters,
   onColumnFilterChange,
+  showScheduledLocks = false,
+  showIgnoredOrders = false,
+  showOnlyLocked = false
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -27,6 +40,24 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
 
   // Handle column filtering
   const filteredClients = clients.filter((c) => {
+    // 1. Checkbox "Показати тільки заблокованих"
+    if (showOnlyLocked && !c.isBlocked) {
+      return false;
+    }
+
+    // 2. Checkbox "Показати заплановані блокування"
+    // залишаються тільки записи із запланованим, ще не застосованим блокуванням (де в колонці «Блок» стоїть іконка годинника)
+    if (showScheduledLocks && !c.isScheduled) {
+      return false;
+    }
+
+    // 3. Checkbox "Показати проігноровані замовлення"
+    // залишаються клієнти, у яких немає активного блокування, але в буфері є заявки з ознакою ігнорування
+    if (showIgnoredOrders) {
+      if (c.isBlocked) return false;
+      if (!c.countIgnored || Number(c.countIgnored) <= 0) return false;
+    }
+
     if (columnFilters.type && columnFilters.type !== '') {
       if (c.type !== columnFilters.type) return false;
     }
@@ -48,6 +79,9 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
     if (columnFilters.sumAllOrders && !c.sumAllOrders.toLowerCase().includes(columnFilters.sumAllOrders.toLowerCase())) return false;
     if (columnFilters.countRowsAllOrders && String(c.countRowsAllOrders) !== columnFilters.countRowsAllOrders) return false;
     if (columnFilters.countIgnored && String(c.countIgnored) !== columnFilters.countIgnored) return false;
+    if (columnFilters.scheduledStart && !(c.scheduledStart || c.scheduledTime || '').toLowerCase().includes(columnFilters.scheduledStart.toLowerCase())) return false;
+    if (columnFilters.scheduledEnd && !(c.scheduledEnd || '').toLowerCase().includes(columnFilters.scheduledEnd.toLowerCase())) return false;
+    if (columnFilters.scheduledObject && !getScheduledObject(c).toLowerCase().includes(columnFilters.scheduledObject.toLowerCase())) return false;
     return true;
   });
 
@@ -76,6 +110,15 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
       const numA = parseFloat(String(aVal).replace(/\s/g, '').replace(',', '.')) || 0;
       const numB = parseFloat(String(bVal).replace(/\s/g, '').replace(',', '.')) || 0;
       return sortDir === 'asc' ? numA - numB : numB - numA;
+    }
+
+    // Scheduled Object
+    if (sortField === 'scheduledObject') {
+      const strA = getScheduledObject(a).toLowerCase();
+      const strB = getScheduledObject(b).toLowerCase();
+      if (strA < strB) return sortDir === 'asc' ? -1 : 1;
+      if (strA > strB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
     }
 
     // Strings
@@ -241,6 +284,25 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         Ігнор {renderSortIndicator('countIgnored')}
                       </div>
                     </th>
+                    {showScheduledLocks && (
+                      <>
+                        <th style={{ width: '130px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('scheduledStart')}>
+                          <div className="ui-th-div ui-jqgrid-sortable">
+                            Початок блокування {renderSortIndicator('scheduledStart')}
+                          </div>
+                        </th>
+                        <th style={{ width: '130px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('scheduledEnd')}>
+                          <div className="ui-th-div ui-jqgrid-sortable">
+                            Кінець блокування {renderSortIndicator('scheduledEnd')}
+                          </div>
+                        </th>
+                        <th style={{ width: '130px', cursor: 'pointer' }} className="ui-th-column ui-th-ltr" onClick={() => handleSort('scheduledObject')}>
+                          <div className="ui-th-div ui-jqgrid-sortable">
+                            Об'єкт блокування {renderSortIndicator('scheduledObject')}
+                          </div>
+                        </th>
+                      </>
+                    )}
                   </tr>
 
                   {/* Inline filter row with neat uniform heights */}
@@ -556,7 +618,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                     </th>
                     <th style={{ padding: '2px 4px' }}>
                       <table className="ui-search-table" style={{ width: '100%' }}>
-                        <tbody>
+                        <tbody style={{ width: '100%' }}>
                           <tr>
                             <td className="ui-search-input">
                               <input
@@ -574,6 +636,70 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </tbody>
                       </table>
                     </th>
+                    {showScheduledLocks && (
+                      <>
+                        <th style={{ padding: '2px 4px' }}>
+                          <table className="ui-search-table" style={{ width: '100%' }}>
+                            <tbody>
+                              <tr>
+                                <td className="ui-search-input">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
+                                    value={columnFilters.scheduledStart || ''}
+                                    onChange={(e) => onColumnFilterChange({ ...columnFilters, scheduledStart: e.target.value })}
+                                  />
+                                </td>
+                                <td className="ui-search-clear">
+                                  <a className="clearsearchclass" onClick={() => clearColumnFilter('scheduledStart')}>x</a>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </th>
+                        <th style={{ padding: '2px 4px' }}>
+                          <table className="ui-search-table" style={{ width: '100%' }}>
+                            <tbody>
+                              <tr>
+                                <td className="ui-search-input">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
+                                    value={columnFilters.scheduledEnd || ''}
+                                    onChange={(e) => onColumnFilterChange({ ...columnFilters, scheduledEnd: e.target.value })}
+                                  />
+                                </td>
+                                <td className="ui-search-clear">
+                                  <a className="clearsearchclass" onClick={() => clearColumnFilter('scheduledEnd')}>x</a>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </th>
+                        <th style={{ padding: '2px 4px' }}>
+                          <table className="ui-search-table" style={{ width: '100%' }}>
+                            <tbody>
+                              <tr>
+                                <td className="ui-search-input">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    style={{ height: 22, padding: '1px 4px', fontSize: 11, borderRadius: 0 }}
+                                    value={columnFilters.scheduledObject || ''}
+                                    onChange={(e) => onColumnFilterChange({ ...columnFilters, scheduledObject: e.target.value })}
+                                  />
+                                </td>
+                                <td className="ui-search-clear">
+                                  <a className="clearsearchclass" onClick={() => clearColumnFilter('scheduledObject')}>x</a>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
               </table>
@@ -741,7 +867,81 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                       </td>
                       <td style={{ width: '95px', textAlign: 'right' }}>{client.sumAllOrders || '\u00A0'}</td>
                       <td style={{ width: '90px', textAlign: 'right' }}>{client.countRowsAllOrders !== '' ? client.countRowsAllOrders : '\u00A0'}</td>
-                      <td style={{ width: '70px', textAlign: 'right' }}>{client.countIgnored !== '' ? client.countIgnored : '\u00A0'}</td>
+                      <td style={{ width: '70px', textAlign: 'right' }}>
+                        {client.countIgnored !== '' && Number(client.countIgnored) > 0 ? (
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (onDrilldownBuffer) onDrilldownBuffer(client, true);
+                            }}
+                            style={{ color: '#d9534f', fontWeight: 'bold', textDecoration: 'underline' }}
+                            title="Переглянути ігноровані замовлення в буфері"
+                          >
+                            {client.countIgnored}
+                          </a>
+                        ) : client.countIgnored !== '' ? (
+                          client.countIgnored
+                        ) : (
+                          '\u00A0'
+                        )}
+                      </td>
+                      {showScheduledLocks && (
+                        <>
+                          <td style={{ width: '130px', textAlign: 'center' }}>{client.scheduledStart || client.scheduledTime || '—'}</td>
+                          <td style={{ width: '130px', textAlign: 'center' }}>{client.scheduledEnd || '—'}</td>
+                          <td style={{ width: '130px', textAlign: 'center' }}>
+                            {(() => {
+                              const obj = getScheduledObject(client);
+                              return (
+                                <span
+                                  style={{
+                                    padding: '2px 6px',
+                                    fontSize: 11,
+                                    fontWeight: 'bold',
+                                    borderRadius: 2,
+                                    display: 'inline-block',
+                                    backgroundColor:
+                                      obj === 'Клієнт'
+                                        ? '#e8f4fd'
+                                        : obj === 'Об\'єднання'
+                                        ? '#fcf8e3'
+                                        : obj === 'РСП'
+                                        ? '#e1f5fe'
+                                        : obj === 'Маршрут'
+                                        ? '#ede7f6'
+                                        : '#f5f5f5',
+                                    color:
+                                      obj === 'Клієнт'
+                                        ? '#1a568c'
+                                        : obj === 'Об\'єднання'
+                                        ? '#8a6d3b'
+                                        : obj === 'РСП'
+                                        ? '#0277bd'
+                                        : obj === 'Маршрут'
+                                        ? '#4a148c'
+                                        : '#333',
+                                    border: `1px solid ${
+                                      obj === 'Клієнт'
+                                        ? '#b8daff'
+                                        : obj === 'Об\'єднання'
+                                        ? '#faebcc'
+                                        : obj === 'РСП'
+                                        ? '#b3e5fc'
+                                        : obj === 'Маршрут'
+                                        ? '#d1c4e9'
+                                        : '#ddd'
+                                    }`
+                                  }}
+                                >
+                                  {obj}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}

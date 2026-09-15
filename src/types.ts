@@ -19,6 +19,10 @@ export interface ClientRecord {
   isBlocked: boolean;
   isScheduled?: boolean;
   scheduledTime?: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  scheduledObject?: string;
+  scheduledAction?: string;
   clCode: string;
   clName: string;
   unionName: string;
@@ -85,7 +89,8 @@ export type ProcessingStatus =
   | 'Заблоковано'
   | 'В очікуванні опрацювання'
   | 'В процесі опрацювання'
-  | 'Опрацьовано';
+  | 'Опрацьовано'
+  | 'Ігноровано';
 
 export type BlockingReasonType =
   | 'Блокування НКЦ'
@@ -146,6 +151,8 @@ export interface FilterState {
   rspId: number;
   routeId: number;
   showOnlyLocked: boolean;
+  showScheduledLocks?: boolean;
+  showIgnoredOrders?: boolean;
 }
 
 export interface ColumnFilters {
@@ -165,6 +172,10 @@ export interface ColumnFilters {
   sumAllOrders: string;
   countRowsAllOrders: string;
   countIgnored: string;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  scheduledObject?: string;
+  scheduledAction?: string;
 }
 
 export interface QueueColumnFilters {
@@ -182,4 +193,5 @@ export interface QueueColumnFilters {
   pending: string;
   urgentazh: string;
   orderCountRows: string;
+  ignored?: string;
 }

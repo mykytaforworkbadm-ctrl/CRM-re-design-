@@ -5,19 +5,31 @@ interface ObjectLocksPageProps {
   objectLocks: ObjectLockRecord[];
   onRemoveLock: (lockId: string) => void;
   onOpenMassAction: () => void;
+  onUpdateLock?: (updatedLock: ObjectLockRecord) => void;
+  onNavigateBack?: () => void;
 }
 
 export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
   objectLocks,
   onRemoveLock,
-  onOpenMassAction
+  onOpenMassAction,
+  onUpdateLock,
+  onNavigateBack
 }) => {
   const [filterType, setFilterType] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'scheduled'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Editing scheduled lock modal state (Requirement 2.8)
+  const [editingLock, setEditingLock] = useState<ObjectLockRecord | null>(null);
+  const [editReason, setEditReason] = useState<string>('');
+  const [editStartDate, setEditStartDate] = useState<string>('');
+  const [editEndDate, setEditEndDate] = useState<string>('');
 
   const [columnFilters, setColumnFilters] = useState({
     targetType: '',
     targetName: '',
+    status: '',
     reason: '',
     lockDate: '',
     lockedBy: '',
@@ -26,6 +38,11 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
 
   const filteredLocks = objectLocks.filter((l) => {
     if (filterType !== 'all' && l.targetType !== filterType) return false;
+    
+    // Status Filter (Requirement 2.8)
+    if (statusFilter === 'active' && l.isScheduled) return false;
+    if (statusFilter === 'scheduled' && !l.isScheduled) return false;
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const match =
@@ -38,6 +55,10 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
 
     if (columnFilters.targetType && !l.targetType.toLowerCase().includes(columnFilters.targetType.toLowerCase())) return false;
     if (columnFilters.targetName && !(l.targetName + ' ' + l.targetCode).toLowerCase().includes(columnFilters.targetName.toLowerCase())) return false;
+    if (columnFilters.status) {
+      const lockStatusText = l.isScheduled ? 'заплановане' : 'активне';
+      if (!lockStatusText.includes(columnFilters.status.toLowerCase())) return false;
+    }
     if (columnFilters.reason && !l.reason.toLowerCase().includes(columnFilters.reason.toLowerCase())) return false;
     if (columnFilters.lockDate && !l.lockDate.toLowerCase().includes(columnFilters.lockDate.toLowerCase())) return false;
     if (columnFilters.lockedBy && !l.lockedBy.toLowerCase().includes(columnFilters.lockedBy.toLowerCase())) return false;
@@ -45,10 +66,77 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
     return true;
   });
 
+  // Export to Excel / CSV (Requirement 2.8)
+  const handleExportCsv = () => {
+    const headers = ['Тип об\'єкта', 'Код', 'Назва', 'Статус', 'Причина', 'Дата блокування', 'Хто встановив', 'Дата початку', 'Дата закінчення'];
+    const rows = filteredLocks.map((l) => [
+      l.targetType,
+      l.targetCode || '',
+      `"${(l.targetName || '').replace(/"/g, '""')}"`,
+      l.isScheduled ? 'Заплановане' : 'Активне',
+      `"${(l.reason || '').replace(/"/g, '""')}"`,
+      l.lockDate || '',
+      `"${(l.lockedBy || '').replace(/"/g, '""')}"`,
+      l.startDate || '',
+      l.endDate || ''
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `reestr_blokuvanny_obiektiv_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleOpenEdit = (lock: ObjectLockRecord) => {
+    setEditingLock(lock);
+    setEditReason(lock.reason || 'Блокування НКЦ');
+    setEditStartDate(lock.startDate || '');
+    setEditEndDate(lock.endDate || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingLock) return;
+    const isStillScheduled = Boolean(editStartDate || editEndDate);
+    const updated: ObjectLockRecord = {
+      ...editingLock,
+      reason: editReason,
+      startDate: editStartDate,
+      endDate: editEndDate,
+      isScheduled: isStillScheduled
+    };
+    if (onUpdateLock) {
+      onUpdateLock(updated);
+    }
+    setEditingLock(null);
+  };
+
   return (
     <div id="object-locks-page" style={{ padding: '0 15px' }}>
-      <div className="text-center">
-        <h2 style={{ fontFamily: 'fantasy' }}>Реєстр блокувань об'єктів (Маршрути, РСП, Склади, Об'єднання)</h2>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 10 }}>
+        <div style={{ width: onNavigateBack ? 220 : 0 }}>
+          {onNavigateBack && (
+            <button
+              type="button"
+              className="btn btn-default btn-sm"
+              onClick={onNavigateBack}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+            >
+              <span>←</span> Назад до реєстру блокувань
+            </button>
+          )}
+        </div>
+        <div className="text-center" style={{ flex: 1 }}>
+          <h2 style={{ fontFamily: 'fantasy', margin: '0 0 4px 0' }}>
+            Реєстр блокувань об'єктів (Маршрути, РСП, Склади, Об'єднання)
+          </h2>
+        </div>
+        <div style={{ width: onNavigateBack ? 220 : 0 }}></div>
       </div>
 
       {/* Top Filter Panel in exact CRM style */}
@@ -61,14 +149,16 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
           marginBottom: 15,
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10
         }}
       >
-        <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-          <div style={{ fontWeight: 'bold' }}>Тип об'єкта:</div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 'bold' }}>Тип:</div>
           <select
             className="form-control"
-            style={{ width: '180px' }}
+            style={{ width: '160px' }}
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
@@ -79,18 +169,39 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
             <option value="Об'єднання">Об'єднання</option>
           </select>
 
-          <div style={{ fontWeight: 'bold', marginLeft: 10 }}>Пошук:</div>
+          <div style={{ fontWeight: 'bold' }}>Статус:</div>
+          <select
+            className="form-control"
+            style={{ width: '160px' }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+          >
+            <option value="all">Всі статуси</option>
+            <option value="active">Тільки активні</option>
+            <option value="scheduled">Тільки заплановані</option>
+          </select>
+
+          <div style={{ fontWeight: 'bold' }}>Пошук:</div>
           <input
             type="text"
             className="form-control"
             placeholder="Назва, код або причина..."
-            style={{ width: '260px' }}
+            style={{ width: '220px' }}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-default"
+            onClick={handleExportCsv}
+            title="Експортувати поточний реєстр у CSV/Excel"
+          >
+            <span className="glyphicon glyphicon-download-alt" style={{ marginRight: 5 }}></span>
+            Експорт у файл
+          </button>
           <button
             type="button"
             className="btn btn-primary"
@@ -109,25 +220,28 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
               <table className="ui-jqgrid-htable ui-common-table table table-bordered" style={{ width: '100%' }}>
                 <thead>
                   <tr className="ui-jqgrid-labels" role="row">
-                    <th style={{ width: '130px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '110px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Тип об'єкта</div>
                     </th>
-                    <th style={{ width: '260px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '240px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Назва / Код об'єкта</div>
                     </th>
-                    <th style={{ width: '220px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '110px', textAlign: 'center' }} className="ui-th-column ui-th-ltr">
+                      <div className="ui-th-div">Статус</div>
+                    </th>
+                    <th style={{ width: '200px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Причина блокування</div>
                     </th>
-                    <th style={{ width: '150px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '140px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Дата постановки</div>
                     </th>
-                    <th style={{ width: '180px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '170px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Хто поставив</div>
                     </th>
-                    <th style={{ width: '190px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '200px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Період дії / Заплановано</div>
                     </th>
-                    <th style={{ width: '110px', textAlign: 'center' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '150px', textAlign: 'center' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Дія</div>
                     </th>
                   </tr>
@@ -167,6 +281,25 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                             </td>
                             <td className="ui-search-clear">
                               <a className="clearsearchclass" onClick={() => setColumnFilters({ ...columnFilters, targetName: '' })}>x</a>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </th>
+                    <th>
+                      <table className="ui-search-table">
+                        <tbody>
+                          <tr>
+                            <td className="ui-search-input">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={columnFilters.status}
+                                onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
+                              />
+                            </td>
+                            <td className="ui-search-clear">
+                              <a className="clearsearchclass" onClick={() => setColumnFilters({ ...columnFilters, status: '' })}>x</a>
                             </td>
                           </tr>
                         </tbody>
@@ -262,13 +395,46 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                         <strong>{lock.targetName}</strong>
                         {lock.targetCode && <span style={{ color: '#666', fontSize: 12 }}> (код: {lock.targetCode})</span>}
                       </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {lock.isScheduled ? (
+                          <span
+                            className="label"
+                            style={{
+                              backgroundColor: '#fff3cd',
+                              color: '#856404',
+                              border: '1px solid #ffeeba',
+                              padding: '3px 6px',
+                              borderRadius: '3px',
+                              fontSize: '11px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            Заплановане
+                          </span>
+                        ) : (
+                          <span
+                            className="label"
+                            style={{
+                              backgroundColor: '#f2dede',
+                              color: '#a94442',
+                              border: '1px solid #ebccd1',
+                              padding: '3px 6px',
+                              borderRadius: '3px',
+                              fontSize: '11px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            Активне
+                          </span>
+                        )}
+                      </td>
                       <td>{lock.reason}</td>
                       <td>{lock.lockDate}</td>
                       <td>{lock.lockedBy}</td>
                       <td>
                         {lock.isScheduled ? (
                           <span style={{ color: '#a06000', fontWeight: 'bold' }}>
-                            ⏱ Заплановано: {lock.startDate || 'майбутній час'} {lock.endDate ? `— ${lock.endDate}` : ''}
+                            ⏱ {lock.startDate || 'майбутній час'} {lock.endDate ? `— ${lock.endDate}` : ''}
                           </span>
                         ) : lock.startDate || lock.endDate ? (
                           <span>
@@ -279,21 +445,35 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-xs"
-                          style={{ padding: '2px 8px', fontSize: 12 }}
-                          onClick={() => onRemoveLock(lock.id)}
-                        >
-                          Зняти блок
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: 4 }}>
+                          {lock.isScheduled && (
+                            <button
+                              type="button"
+                              className="btn btn-warning btn-xs"
+                              style={{ padding: '2px 6px', fontSize: 11 }}
+                              onClick={() => handleOpenEdit(lock)}
+                              title="Редагувати розклад або причину"
+                            >
+                              Редагувати
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-xs"
+                            style={{ padding: '2px 6px', fontSize: 11 }}
+                            onClick={() => onRemoveLock(lock.id)}
+                            title={lock.isScheduled ? 'Скасувати заплановане блокування' : 'Зняти активне блокування'}
+                          >
+                            {lock.isScheduled ? 'Скасувати' : 'Зняти блок'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                   {filteredLocks.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
-                        Немає активних або запланованих блокувань об'єктів
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
+                        Немає блокувань об'єктів за обраними критеріями
                       </td>
                     </tr>
                   )}
@@ -303,6 +483,92 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Edit Scheduled Lock Modal (Requirement 2.8) */}
+      {editingLock && (
+        <>
+          <div className="modal fade in" style={{ display: 'block', zIndex: 1060 }} role="dialog">
+            <div className="modal-dialog" style={{ width: 500, marginTop: '80px' }}>
+              <div className="modal-content panel panel-warning" style={{ marginBottom: 0 }}>
+                <div className="modal-header panel-heading">
+                  <h4 className="modal-title" style={{ fontSize: 15, fontWeight: 'bold' }}>
+                    Редагування запланованого блокування
+                  </h4>
+                  <button
+                    type="button"
+                    className="close"
+                    onClick={() => setEditingLock(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="modal-body" style={{ padding: 15 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <strong>Об'єкт: </strong>
+                    <span className="label label-info" style={{ marginRight: 6 }}>{editingLock.targetType}</span>
+                    <span>{editingLock.targetName}</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 12, fontWeight: 'bold' }}>Причина блокування:</label>
+                    <select
+                      className="form-control"
+                      value={editReason}
+                      onChange={(e) => setEditReason(e.target.value)}
+                    >
+                      <option value="Кредитный лимит">Кредитный лимит</option>
+                      <option value="Дебиторская задолженость">Дебиторская задолженость</option>
+                      <option value="Блокування НКЦ">Блокування НКЦ</option>
+                      <option value="РСП">РСП</option>
+                      <option value="Об'єднання">Об'єднання</option>
+                      <option value="Технічне обслуговування">Технічне обслуговування</option>
+                      <option value="Перекриття автошляху">Перекриття автошляху</option>
+                    </select>
+                  </div>
+
+                  <div className="row" style={{ marginBottom: 10 }}>
+                    <div className="col-xs-6">
+                      <label style={{ fontSize: 12, fontWeight: 'bold' }}>Дата-час з:</label>
+                      <input
+                        type="datetime-local"
+                        className="form-control"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-xs-6">
+                      <label style={{ fontSize: 12, fontWeight: 'bold' }}>Дата-час по:</label>
+                      <input
+                        type="datetime-local"
+                        className="form-control"
+                        value={editEndDate}
+                        onChange={(e) => setEditEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer" style={{ padding: '10px 15px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSaveEdit}
+                  >
+                    Зберегти зміни
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-default btn-sm"
+                    onClick={() => setEditingLock(null)}
+                  >
+                    Скасувати
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade in" style={{ zIndex: 1058 }}></div>
+        </>
+      )}
     </div>
   );
 };
