@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
+import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
 
 interface ChangeLockModalProps {
   client: ClientRecord | null;
@@ -34,9 +35,32 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
   useEffect(() => {
     if (client) {
       setIsBlocked(client.isBlocked);
-      setReason(client.reason || 'Кредитный лимит');
-      setStartDateTime('');
-      setEndDateTime('');
+      
+      const scheduledDetail = client.lockDetails?.find((d) => d.isScheduled);
+      const activeDetail = client.lockDetails?.find((d) => !d.isScheduled);
+      
+      const sDate = client.scheduledStart || scheduledDetail?.startDate || activeDetail?.startDate || '';
+      const eDate = client.scheduledEnd || scheduledDetail?.endDate || activeDetail?.endDate || '';
+
+      const currentReason = client.reason || scheduledDetail?.reason || activeDetail?.reason || 'Кредитний ліміт';
+      setReason(currentReason);
+
+      const formatToInputDate = (dStr?: string) => {
+        if (!dStr) return '';
+        if (dStr.includes('T')) return dStr.slice(0, 16);
+        const parts = dStr.trim().split(' ');
+        if (parts.length >= 1) {
+          const dParts = parts[0].split('.');
+          if (dParts.length === 3) {
+            const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
+            return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+          }
+        }
+        return dStr;
+      };
+
+      setStartDateTime(formatToInputDate(sDate));
+      setEndDateTime(formatToInputDate(eDate));
     }
   }, [client]);
 
@@ -61,7 +85,7 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
     onSave(
       client.id,
       isBlocked,
-      isBlocked ? reason || 'Кредитный лимит' : '',
+      isBlocked ? reason || 'Кредитний ліміт' : '',
       isBlocked ? startDateTime : undefined,
       isBlocked ? endDateTime : undefined
     );
@@ -331,13 +355,11 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
                     >
                       {isBlocked ? (
                         <>
-                          <option value="Кредитный лимит">Кредитный лимит</option>
-                          <option value="Дебиторская задолженость">Дебиторская задолженость</option>
-                          <option value="Блокування НКЦ">Блокування НКЦ</option>
-                          <option value="Пробне блокування">Пробне блокування</option>
-                          <option value="РСП">РСП</option>
-                          <option value="Об'єднання">Об'єднання</option>
-                          <option value="Технічна перевірка">Технічна перевірка</option>
+                          {UNIFIED_BLOCKING_REASONS.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
                         </>
                       ) : (
                         <option value="">не вказана (розблоковано)</option>

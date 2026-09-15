@@ -1,5 +1,15 @@
 import { ClientRecord, QueueOrder, ObjectLockRecord } from '../types';
 
+export const UNIFIED_BLOCKING_REASONS = [
+  'Кредитний ліміт',
+  'Частковий кредитний ліміт',
+  'Дебіторська заборгованість',
+  'Блокування НКЦ',
+  'Пробне блокування',
+  'Технічне обслуговування',
+  'Перекриття автошляху'
+] as const;
+
 export const UNIONS_DATA = [
   { value: 0, label: 'не обраний' },
   { value: 56, label: 'О_NOVA UKRAINE' },
@@ -136,10 +146,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Томко Тетяна Леонідівна',
     editDate: '12.08.2025 08:36:25',
     editUser: 'EDIQ',
-    reason: 'Дебиторская задолженость',
+    reason: 'Дебіторська заборгованість',
     reasonId: 32,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Дебиторская задолженость' }
+      { source: 'Клієнт', reason: 'Дебіторська заборгованість' }
     ],
     countUrgent: '',
     countOrders: '',
@@ -173,10 +183,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Хамардюк Ігор Миколайович',
     editDate: '18.08.2026 09:21:36',
     editUser: 'EDIQ',
-    reason: 'Кредитный лимит',
+    reason: 'Кредитний ліміт',
     reasonId: 30,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Кредитный лимит', startDate: '18.08.2026 14:00', endDate: '18.08.2026 20:00', isScheduled: true }
+      { source: 'Клієнт', reason: 'Кредитний ліміт', startDate: '18.08.2026 14:00', endDate: '18.08.2026 20:00', isScheduled: true }
     ],
     countUrgent: '',
     countOrders: '',
@@ -282,10 +292,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Генцар Микола Юрійович',
     editDate: '23.07.2025 17:24:08',
     editUser: 'EDIQ',
-    reason: 'Кредитный лимит',
+    reason: 'Кредитний ліміт',
     reasonId: 30,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Кредитный лимит' },
+      { source: 'Клієнт', reason: 'Кредитний ліміт' },
       { source: 'Маршрут', reason: 'Перекриття автошляху', startDate: '20.08.2026 08:00', endDate: '25.08.2026 18:00', isScheduled: true }
     ],
     countUrgent: 1,
@@ -315,10 +325,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Хамардюк Ігор Миколайович',
     editDate: '23.07.2025 17:22:58',
     editUser: 'EDIQ',
-    reason: 'Кредитный лимит',
+    reason: 'Кредитний ліміт',
     reasonId: 30,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Кредитный лимит' }
+      { source: 'Клієнт', reason: 'Кредитний ліміт' }
     ],
     countUrgent: 1,
     countOrders: 26,
@@ -347,10 +357,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Мельничук Яна Іванівна',
     editDate: '14.07.2025 14:43:35',
     editUser: 'EDIQ',
-    reason: 'Дебиторская задолженость',
+    reason: 'Дебіторська заборгованість',
     reasonId: 32,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Дебиторская задолженость' }
+      { source: 'Клієнт', reason: 'Дебіторська заборгованість' }
     ],
     countUrgent: '',
     countOrders: '',
@@ -379,10 +389,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Сорокопуд Валентина Сергіївна',
     editDate: '18.08.2026 09:21:39',
     editUser: 'EDIQ',
-    reason: 'Дебиторская задолженость',
+    reason: 'Дебіторська заборгованість',
     reasonId: 32,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Дебиторская задолженость' }
+      { source: 'Клієнт', reason: 'Дебіторська заборгованість' }
     ],
     countUrgent: 0,
     countOrders: 1,
@@ -415,10 +425,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Джос Оксана Володимирівна',
     editDate: '23.07.2025 17:11:21',
     editUser: 'EDIQ',
-    reason: 'Кредитный лимит',
+    reason: 'Кредитний ліміт',
     reasonId: 30,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Кредитный лимит' },
+      { source: 'Клієнт', reason: 'Кредитний ліміт' },
       { source: 'Склад', reason: 'Панікахи: Технічне обслуговування', startDate: '22.08.2026 06:00', endDate: '22.08.2026 14:00', isScheduled: true }
     ],
     countUrgent: 2,
@@ -481,10 +491,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Ізотова Юлія Валеріївна',
     editDate: '14.07.2025 14:27:05',
     editUser: 'EDIQ',
-    reason: 'Дебиторская задолженость',
+    reason: 'Дебіторська заборгованість',
     reasonId: 32,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Дебиторская задолженость' }
+      { source: 'Клієнт', reason: 'Дебіторська заборгованість' }
     ],
     countUrgent: '',
     countOrders: '',
@@ -513,10 +523,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Гарник Алла Василівна',
     editDate: '15.07.2025 13:06:51',
     editUser: 'EDIQ',
-    reason: 'Дебиторская задолженость',
+    reason: 'Дебіторська заборгованість',
     reasonId: 32,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Дебиторская задолженость' }
+      { source: 'Клієнт', reason: 'Дебіторська заборгованість' }
     ],
     countUrgent: '',
     countOrders: '',
@@ -756,6 +766,28 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     lockedBy: 'EDIQ',
     startDate: '20.08.2026 00:00',
     endDate: '21.08.2026 00:00',
+    isScheduled: true
+  },
+  {
+    id: 'obj-7',
+    targetType: 'Маршрут',
+    targetCode: '1299',
+    targetName: 'BT_KI_01',
+    reason: 'Кредитний ліміт',
+    lockDate: '18.08.2026 08:00:00',
+    lockedBy: 'Служба логістики',
+    isScheduled: false
+  },
+  {
+    id: 'obj-8',
+    targetType: 'Склад',
+    targetCode: '-37',
+    targetName: 'Паникахи Днепропетровск Сводный',
+    reason: 'Технічне обслуговування',
+    lockDate: '18.08.2026 10:00:00',
+    lockedBy: 'Дубінін Микита Валерійович',
+    startDate: '01.09.2026 08:00',
+    endDate: '05.09.2026 20:00',
     isScheduled: true
   }
 ];
@@ -1417,7 +1449,7 @@ export const UNLOCKED_QUEUE_ORDERS: import('../types').UnlockedQueueOrder[] = [
     urgentazh: 'Так',
     mzkOrderNo: '—',
     processingStatus: 'Заблоковано',
-    integrationError: 'Блокування автоімпорту активне',
+    integrationError: '—',
     statusComment: 'Блок ще не знято.'
   },
   {
@@ -1509,7 +1541,7 @@ export const UNLOCKED_QUEUE_ORDERS: import('../types').UnlockedQueueOrder[] = [
     urgentazh: 'Так',
     mzkOrderNo: '—',
     processingStatus: 'Заблоковано',
-    integrationError: 'Заблоковано за рішенням НКЦ',
+    integrationError: '—',
     statusComment: 'Блок ще не знято.'
   },
   {
@@ -1531,9 +1563,9 @@ export const UNLOCKED_QUEUE_ORDERS: import('../types').UnlockedQueueOrder[] = [
     ignored: 'Так',
     urgentazh: 'Так',
     mzkOrderNo: '—',
-    processingStatus: 'В процесі опрацювання',
+    processingStatus: 'Ігноровано',
     integrationError: '—',
-    statusComment: 'Блок знято, триває процес інтеграції.'
+    statusComment: 'Блок знято, замовлення позначено як ігнороване.'
   },
   {
     id: 9812012,
@@ -1578,7 +1610,7 @@ export const UNLOCKED_QUEUE_ORDERS: import('../types').UnlockedQueueOrder[] = [
     urgentazh: 'Так',
     mzkOrderNo: '—',
     processingStatus: 'Ігноровано',
-    integrationError: 'Замовлення проігноровано користувачем',
+    integrationError: '—',
     statusComment: 'Позначено як ігнороване користувачем, виключено з автообробки.'
   }
 ];

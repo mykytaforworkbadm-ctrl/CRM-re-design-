@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
-import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA } from '../data/mockData';
+import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA, UNIFIED_BLOCKING_REASONS } from '../data/mockData';
 
 interface MassActionModalProps {
   isOpen: boolean;
@@ -52,7 +52,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
   const [deptSearch, setDeptSearch] = useState<string>('');
 
   // Form states at bottom
-  const [reason, setReason] = useState<string>('Кредитный лимит');
+  const [reason, setReason] = useState<string>('Кредитний ліміт');
   const [startDateTime, setStartDateTime] = useState<string>('');
   const [endDateTime, setEndDateTime] = useState<string>('');
 
@@ -269,7 +269,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
               ? client.lockDetails
               : [{
                   source: 'Клієнт' as const,
-                  reason: client.reason || 'Кредитный лимит',
+                  reason: client.reason || 'Кредитний ліміт',
                   startDate: client.scheduledStart,
                   endDate: client.scheduledEnd,
                   isScheduled: client.isScheduled
@@ -793,14 +793,11 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                     >
-                      <option value="Кредитный лимит">Кредитный лимит</option>
-                      <option value="Дебиторская задолженость">Дебиторская задолженость</option>
-                      <option value="Блокування НКЦ">Блокування НКЦ</option>
-                      <option value="РСП">РСП</option>
-                      <option value="Об'єднання">Об'єднання</option>
-                      <option value="Пробне блокування">Пробне блокування</option>
-                      <option value="Технічне обслуговування">Технічне обслуговування</option>
-                      <option value="Перекриття автошляху">Перекриття автошляху</option>
+                      {UNIFIED_BLOCKING_REASONS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
