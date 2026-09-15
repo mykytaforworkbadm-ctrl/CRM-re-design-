@@ -36,13 +36,16 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
     if (client) {
       setIsBlocked(client.isBlocked);
       
+      const clientDirectDetail = client.lockDetails?.find((d) => d.source === 'Клієнт');
       const scheduledDetail = client.lockDetails?.find((d) => d.isScheduled);
       const activeDetail = client.lockDetails?.find((d) => !d.isScheduled);
       
-      const sDate = client.scheduledStart || scheduledDetail?.startDate || activeDetail?.startDate || '';
-      const eDate = client.scheduledEnd || scheduledDetail?.endDate || activeDetail?.endDate || '';
+      // Determine dates: if direct client lock has dates, or client scheduledStart/End, or scheduledDetail
+      const sDate = clientDirectDetail?.startDate || client.scheduledStart || scheduledDetail?.startDate || (client.isScheduled ? activeDetail?.startDate : '') || '';
+      const eDate = clientDirectDetail?.endDate || client.scheduledEnd || scheduledDetail?.endDate || (client.isScheduled ? activeDetail?.endDate : '') || '';
 
-      const currentReason = client.reason || scheduledDetail?.reason || activeDetail?.reason || 'Кредитний ліміт';
+      // Direct client reason first, then other lockDetails, then client.reason, fallback to 'Кредитний ліміт'
+      const currentReason = clientDirectDetail?.reason || (client.lockDetails && client.lockDetails.length > 0 ? client.lockDetails.find((d) => d.reason)?.reason : undefined) || client.reason || 'Кредитний ліміт';
       setReason(currentReason);
 
       const formatToInputDate = (dStr?: string) => {
@@ -53,7 +56,8 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
           const dParts = parts[0].split('.');
           if (dParts.length === 3) {
             const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
-            return `${dParts[2]}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+            const year = dParts[2].length === 2 ? `20${dParts[2]}` : dParts[2];
+            return `${year}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
           }
         }
         return dStr;
@@ -355,6 +359,11 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
                     >
                       {isBlocked ? (
                         <>
+                          {reason && !UNIFIED_BLOCKING_REASONS.includes(reason as any) && (
+                            <option key={reason} value={reason}>
+                              {reason}
+                            </option>
+                          )}
                           {UNIFIED_BLOCKING_REASONS.map((r) => (
                             <option key={r} value={r}>
                               {r}

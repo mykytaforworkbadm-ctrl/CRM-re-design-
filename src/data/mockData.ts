@@ -7,6 +7,7 @@ export const UNIFIED_BLOCKING_REASONS = [
   'Блокування НКЦ',
   'Пробне блокування',
   'Технічне обслуговування',
+  'Планова інвентаризація',
   'Перекриття автошляху'
 ] as const;
 
@@ -752,7 +753,7 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     reason: 'Планова інвентаризація',
     lockDate: '18.08.2026 09:00:00',
     lockedBy: 'Дубінін Микита Валерійович',
-    startDate: '19.08.2026 08:00',
+    startDate: '18.08.2026 09:00',
     endDate: '19.08.2026 20:00',
     isScheduled: true
   },

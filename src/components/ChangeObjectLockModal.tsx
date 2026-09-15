@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { EntityRegistryRow, EntityType } from '../types';
+import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
 
 interface ChangeObjectLockModalProps {
   row: EntityRegistryRow | null;
@@ -16,18 +17,6 @@ interface ChangeObjectLockModalProps {
   ) => void;
 }
 
-const COMMON_REASONS = [
-  'Блокування НКЦ',
-  'Дебіторська заборгованість',
-  'Кредитний ліміт',
-  'Технічне обслуговування конвеєра',
-  'Планова інвентаризація',
-  'Перекриття автошляху',
-  'Технічні роботи',
-  'Розпорядження керівництва',
-  'Інша причина'
-];
-
 export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
   row,
   isOpen,
@@ -36,45 +25,64 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
 }) => {
   const [isBlocked, setIsBlocked] = useState<boolean>(true);
   const [reason, setReason] = useState<string>('Блокування НКЦ');
-  const [customReason, setCustomReason] = useState<string>('');
   const [isScheduled, setIsScheduled] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  const formatToInputDate = (dStr?: string) => {
+    if (!dStr) return '';
+    if (dStr.includes('T')) return dStr.slice(0, 16);
+    const parts = dStr.trim().split(' ');
+    if (parts.length >= 1) {
+      const dParts = parts[0].split('.');
+      if (dParts.length === 3) {
+        const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
+        const year = dParts[2].length === 2 ? `20${dParts[2]}` : dParts[2];
+        return `${year}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+      }
+    }
+    return dStr;
+  };
+
+  const formatFromInputDate = (dStr?: string) => {
+    if (!dStr) return undefined;
+    if (dStr.includes('T')) {
+      const [datePart, timePart] = dStr.split('T');
+      const ymd = datePart.split('-');
+      if (ymd.length === 3) {
+        return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
+      }
+    }
+    return dStr;
+  };
 
   useEffect(() => {
     if (row) {
       setIsBlocked(row.isBlocked);
       if (row.reason) {
-        if (COMMON_REASONS.includes(row.reason)) {
-          setReason(row.reason);
-          setCustomReason('');
-        } else {
-          setReason('Інша причина');
-          setCustomReason(row.reason);
-        }
+        setReason(row.reason);
       } else {
         // default reason based on entity type
-        if (row.type === 'Склад') setReason('Технічне обслуговування конвеєра');
+        if (row.type === 'Склад') setReason('Технічне обслуговування');
         else if (row.type === 'Маршрут') setReason('Перекриття автошляху');
         else if (row.type === 'РСП') setReason('Планова інвентаризація');
         else setReason('Блокування НКЦ');
-        setCustomReason('');
       }
 
-      setIsScheduled(Boolean(row.isScheduled || row.startDate || row.endDate));
-      setStartDate(row.startDate || '');
-      setEndDate(row.endDate || '');
+      const hasActualPeriod = Boolean((row.startDate && row.startDate.trim()) || (row.endDate && row.endDate.trim()));
+      setIsScheduled(Boolean(row.isScheduled && hasActualPeriod));
+      setStartDate(formatToInputDate(row.startDate));
+      setEndDate(formatToInputDate(row.endDate));
     }
   }, [row]);
 
   if (!isOpen || !row) return null;
 
   const handleSave = () => {
-    const finalReason = isBlocked
-      ? reason === 'Інша причина' && customReason.trim()
-        ? customReason.trim()
-        : reason
-      : '';
+    const finalReason = isBlocked ? (reason || 'Блокування НКЦ') : '';
+
+    const formattedStartDate = isBlocked && isScheduled ? formatFromInputDate(startDate) : undefined;
+    const formattedEndDate = isBlocked && isScheduled ? formatFromInputDate(endDate) : undefined;
 
     onSave(
       row.type,
@@ -82,8 +90,8 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
       row.name,
       isBlocked,
       finalReason,
-      isBlocked && isScheduled ? startDate : undefined,
-      isBlocked && isScheduled ? endDate : undefined
+      formattedStartDate,
+      formattedEndDate
     );
     onClose();
   };
@@ -224,25 +232,19 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
                       className="form-control input-sm"
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      style={{ height: 30, borderRadius: 0, marginBottom: 8 }}
+                      style={{ height: 30, borderRadius: 0 }}
                     >
-                      {COMMON_REASONS.map((r) => (
+                      {reason && !UNIFIED_BLOCKING_REASONS.includes(reason as any) && (
+                        <option key={reason} value={reason}>
+                          {reason}
+                        </option>
+                      )}
+                      {UNIFIED_BLOCKING_REASONS.map((r) => (
                         <option key={r} value={r}>
                           {r}
                         </option>
                       ))}
                     </select>
-
-                    {reason === 'Інша причина' && (
-                      <input
-                        type="text"
-                        className="form-control input-sm"
-                        placeholder="Введіть власну причину..."
-                        value={customReason}
-                        onChange={(e) => setCustomReason(e.target.value)}
-                        style={{ height: 30, borderRadius: 0, marginBottom: 8 }}
-                      />
-                    )}
                   </div>
                 )}
               </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ObjectLockRecord, EntityType } from '../types';
+import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
 
 interface ObjectLocksPageProps {
   objectLocks: ObjectLockRecord[];
@@ -93,21 +94,50 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const formatToInputDate = (dStr?: string) => {
+    if (!dStr) return '';
+    if (dStr.includes('T')) return dStr.slice(0, 16);
+    const parts = dStr.trim().split(' ');
+    if (parts.length >= 1) {
+      const dParts = parts[0].split('.');
+      if (dParts.length === 3) {
+        const timePart = parts[1] ? parts[1].slice(0, 5) : '00:00';
+        const year = dParts[2].length === 2 ? `20${dParts[2]}` : dParts[2];
+        return `${year}-${dParts[1].padStart(2, '0')}-${dParts[0].padStart(2, '0')}T${timePart}`;
+      }
+    }
+    return dStr;
+  };
+
+  const formatFromInputDate = (dStr?: string) => {
+    if (!dStr) return undefined;
+    if (dStr.includes('T')) {
+      const [datePart, timePart] = dStr.split('T');
+      const ymd = datePart.split('-');
+      if (ymd.length === 3) {
+        return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
+      }
+    }
+    return dStr;
+  };
+
   const handleOpenEdit = (lock: ObjectLockRecord) => {
     setEditingLock(lock);
-    setEditReason(lock.reason || 'Блокування НКЦ');
-    setEditStartDate(lock.startDate || '');
-    setEditEndDate(lock.endDate || '');
+    setEditReason(lock.reason || 'Кредитний ліміт');
+    setEditStartDate(formatToInputDate(lock.startDate));
+    setEditEndDate(formatToInputDate(lock.endDate));
   };
 
   const handleSaveEdit = () => {
     if (!editingLock) return;
-    const isStillScheduled = Boolean(editStartDate || editEndDate);
+    const formattedStartDate = formatFromInputDate(editStartDate);
+    const formattedEndDate = formatFromInputDate(editEndDate);
+    const isStillScheduled = Boolean(formattedStartDate || formattedEndDate);
     const updated: ObjectLockRecord = {
       ...editingLock,
       reason: editReason,
-      startDate: editStartDate,
-      endDate: editEndDate,
+      startDate: formattedStartDate,
+      endDate: formattedEndDate,
       isScheduled: isStillScheduled
     };
     if (onUpdateLock) {
@@ -516,13 +546,16 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                       value={editReason}
                       onChange={(e) => setEditReason(e.target.value)}
                     >
-                      <option value="Кредитный лимит">Кредитный лимит</option>
-                      <option value="Дебиторская задолженость">Дебиторская задолженость</option>
-                      <option value="Блокування НКЦ">Блокування НКЦ</option>
-                      <option value="РСП">РСП</option>
-                      <option value="Об'єднання">Об'єднання</option>
-                      <option value="Технічне обслуговування">Технічне обслуговування</option>
-                      <option value="Перекриття автошляху">Перекриття автошляху</option>
+                      {editReason && !UNIFIED_BLOCKING_REASONS.includes(editReason as any) && (
+                        <option key={editReason} value={editReason}>
+                          {editReason}
+                        </option>
+                      )}
+                      {UNIFIED_BLOCKING_REASONS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

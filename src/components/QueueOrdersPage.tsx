@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { QueueOrder, QueueColumnFilters, ClientRecord } from '../types';
-import { UNIONS_DATA } from '../data/mockData';
+import { UNIONS_DATA, CORPORATIONS_DATA } from '../data/mockData';
 
 interface QueueOrdersPageProps {
   orders: QueueOrder[];
@@ -29,6 +29,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
   // Top filter states
   const [filterClient, setFilterClient] = useState<string>('');
   const [filterUnion, setFilterUnion] = useState<string>('');
+  const [filterCorp, setFilterCorp] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
 
@@ -68,6 +69,9 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
       if (initialClientFilter.unionName) {
         setFilterUnion(initialClientFilter.unionName);
       }
+      if (initialClientFilter.corpCode) {
+        setFilterCorp(initialClientFilter.corpCode);
+      }
     }
     if (initialShowIgnoredOnly) {
       setColumnFilters((prev) => ({ ...prev, pending: 'Так' }));
@@ -81,13 +85,16 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
       const matchClient = o.clientCode.toLowerCase().includes(q) || o.clientName.toLowerCase().includes(q);
       if (!matchClient) return false;
     }
-    if (filterUnion && filterUnion !== '0') {
+    if (filterUnion && filterUnion !== '0' && filterUnion !== '') {
       const q = filterUnion.toLowerCase();
-      const matchUnion =
-        (o.unionName && o.unionName.toLowerCase().includes(q)) ||
-        (o.corpName && o.corpName.toLowerCase().includes(q)) ||
-        (o.corpCode && o.corpCode.toLowerCase().includes(q));
+      const matchUnion = o.unionName && o.unionName.toLowerCase().includes(q);
       if (!matchUnion) return false;
+    }
+    if (filterCorp && filterCorp !== 'all' && filterCorp !== '') {
+      const matchCorp =
+        (o.corpCode && o.corpCode === filterCorp) ||
+        (o.corpName && o.corpName.includes(filterCorp));
+      if (!matchCorp) return false;
     }
     if (filterDateFrom) {
       const orderDateParts = o.dateReceived.split(' ')[0].split('.');
@@ -167,6 +174,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
   const handleResetFilters = () => {
     setFilterClient('');
     setFilterUnion('');
+    setFilterCorp('all');
     setFilterDateFrom('');
     setFilterDateTo('');
     setColumnFilters({
@@ -209,6 +217,16 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
     if (selectedOrderIds.length === 0) return;
     const updated = localOrders.map((o) =>
       selectedOrderIds.includes(o.id) ? { ...o, pending: 'Так' } : o
+    );
+    setLocalOrders(updated);
+    if (onUpdateOrders) onUpdateOrders(updated);
+    setSelectedOrderIds([]);
+  };
+
+  const handleUnignoreSelected = () => {
+    if (selectedOrderIds.length === 0) return;
+    const updated = localOrders.map((o) =>
+      selectedOrderIds.includes(o.id) ? { ...o, pending: 'Ні' } : o
     );
     setLocalOrders(updated);
     if (onUpdateOrders) onUpdateOrders(updated);
@@ -285,11 +303,11 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
           marginBottom: 15
         }}
       >
-        <div className="row" style={{ marginBottom: 8 }}>
-          <div className="col-md-2" style={{ fontWeight: 'bold', width: '180px' }}>
+        <div className="row" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 'bold', width: '180px' }}>
             Клієнт (код / назва):
           </div>
-          <div className="col-md-2" style={{ width: '240px' }}>
+          <div style={{ width: '220px' }}>
             <input
               type="text"
               className="form-control"
@@ -299,16 +317,16 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
             />
           </div>
 
-          <div className="col-md-2" style={{ fontWeight: 'bold', width: '210px', paddingLeft: 20 }}>
-            Об'єднання / Корпорація:
+          <div style={{ fontWeight: 'bold', width: '120px', paddingLeft: 15 }}>
+            Об'єднання:
           </div>
-          <div className="col-md-2" style={{ width: '320px' }}>
+          <div style={{ width: '250px' }}>
             <select
               className="form-control"
               value={filterUnion}
               onChange={(e) => setFilterUnion(e.target.value)}
             >
-              <option value="">Всі об'єднання та корпорації</option>
+              <option value="">Всі об'єднання</option>
               {UNIONS_DATA.filter((u) => u.value !== 0).map((u) => (
                 <option key={u.value} value={u.label}>
                   {u.label}
@@ -316,13 +334,30 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
               ))}
             </select>
           </div>
+
+          <div style={{ fontWeight: 'bold', width: '120px', paddingLeft: 15 }}>
+            Корпорація:
+          </div>
+          <div style={{ width: '250px' }}>
+            <select
+              className="form-control"
+              value={filterCorp}
+              onChange={(e) => setFilterCorp(e.target.value)}
+            >
+              {CORPORATIONS_DATA.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="row">
-          <div className="col-md-2" style={{ fontWeight: 'bold', width: '180px' }}>
+        <div className="row" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 'bold', width: '180px' }}>
             Дата надходження з:
           </div>
-          <div className="col-md-2" style={{ width: '240px' }}>
+          <div style={{ width: '220px' }}>
             <input
               type="date"
               className="form-control"
@@ -331,10 +366,10 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
             />
           </div>
 
-          <div className="col-md-2" style={{ fontWeight: 'bold', width: '210px', paddingLeft: 20 }}>
+          <div style={{ fontWeight: 'bold', width: '180px', paddingLeft: 15 }}>
             Дата надходження по:
           </div>
-          <div className="col-md-2" style={{ width: '240px' }}>
+          <div style={{ width: '220px' }}>
             <input
               type="date"
               className="form-control"
@@ -343,7 +378,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
             />
           </div>
 
-          <div style={{ marginLeft: 20, display: 'flex', gap: 10 }}>
+          <div style={{ marginLeft: 20, display: 'inline-flex', gap: 10 }}>
             <button
               type="button"
               className="btn btn-success"
@@ -362,7 +397,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
         </div>
       </div>
 
-      {/* Action Toolbar for Buffer Orders (Item 2.2) */}
+      {/* Action Toolbar for Buffer Orders */}
       <div
         id="buffer_action_toolbar"
         style={{
@@ -389,6 +424,16 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
             title="Позначити обрані замовлення як ігноровані (не передавати в автообробку)"
           >
             Ігнорувати обрані ({selectedOrderIds.length})
+          </button>
+          <button
+            type="button"
+            className="btn btn-success btn-sm"
+            disabled={selectedOrderIds.length === 0}
+            onClick={handleUnignoreSelected}
+            style={{ fontWeight: 600 }}
+            title="Зняти ознаку ігнорування з обраних замовлень"
+          >
+            Зняти ознаку ігнорування ({selectedOrderIds.length})
           </button>
           <button
             type="button"
@@ -529,7 +574,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
                     <th style={{ width: '120px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Менеджер</div>
                     </th>
-                    <th style={{ width: '105px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '130px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Сума замовлення</div>
                     </th>
                     <th style={{ width: '75px' }} className="ui-th-column ui-th-ltr">
@@ -538,7 +583,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
                     <th style={{ width: '70px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Ургентаж</div>
                     </th>
-                    <th style={{ width: '95px' }} className="ui-th-column ui-th-ltr">
+                    <th style={{ width: '110px' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Кількість позицій</div>
                     </th>
                   </tr>
@@ -887,14 +932,14 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
                 {/* Summary Totals Footer */}
                 <tfoot>
                   <tr style={{ backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>
-                    <td colSpan={11} style={{ textAlign: 'right', padding: '8px 12px' }}>
+                    <td colSpan={11} style={{ textAlign: 'right', padding: '8px 12px', whiteSpace: 'nowrap' }}>
                       Разом по відфільтрованих замовленнях ({finalFilteredOrders.length} замовл.):
                     </td>
-                    <td style={{ textAlign: 'right', padding: '8px', color: '#245580', fontSize: 13 }}>
+                    <td style={{ textAlign: 'right', padding: '8px', color: '#245580', fontSize: 13, whiteSpace: 'nowrap' }}>
                       {totalSum.toLocaleString('uk-UA', { minimumFractionDigits: 2 })} грн
                     </td>
-                    <td colSpan={2}></td>
-                    <td style={{ textAlign: 'right', padding: '8px', color: '#245580', fontSize: 13 }}>
+                    <td colSpan={2} style={{ backgroundColor: '#f0f0f0' }}></td>
+                    <td style={{ textAlign: 'right', padding: '8px', color: '#245580', fontSize: 13, whiteSpace: 'nowrap' }}>
                       {totalPositions}
                     </td>
                   </tr>

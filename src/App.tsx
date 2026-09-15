@@ -210,26 +210,47 @@ export default function App() {
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const isScheduled = isBlocked && Boolean(startDateTime || endDateTime);
 
+    const formatSaveDate = (dStr?: string) => {
+      if (!dStr) return undefined;
+      if (dStr.includes('T')) {
+        const [datePart, timePart] = dStr.split('T');
+        const ymd = datePart.split('-');
+        if (ymd.length === 3) {
+          return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
+        }
+      }
+      return dStr;
+    };
+
+    const savedStartDate = formatSaveDate(startDateTime);
+    const savedEndDate = formatSaveDate(endDateTime);
+
     setClients((prev) =>
       prev.map((c) => {
         if (c.id === clientId) {
-          const newLockDetails = isBlocked
+          // Preserve other source locks if any (e.g. from Union, Route, RSP), replace Client source lock
+          const otherSourceLocks = (c.lockDetails || []).filter((d) => d.source !== 'Клієнт');
+          const clientLockDetail = isBlocked
             ? [
                 {
                   source: 'Клієнт' as const,
-                  reason: reason || 'Кредитный лимит',
+                  reason: reason || 'Кредитний ліміт',
                   isScheduled,
-                  startDate: startDateTime,
-                  endDate: endDateTime
+                  startDate: savedStartDate,
+                  endDate: savedEndDate
                 }
               ]
             : [];
+          const newLockDetails = [...clientLockDetail, ...otherSourceLocks];
+
           return {
             ...c,
-            isBlocked,
-            isScheduled,
-            scheduledTime: startDateTime ? startDateTime.replace('T', ' ') : undefined,
-            reason: isBlocked ? (reason || 'Кредитный лимит') : '',
+            isBlocked: isBlocked || otherSourceLocks.length > 0,
+            isScheduled: isScheduled || otherSourceLocks.some((d) => d.isScheduled),
+            scheduledStart: savedStartDate || (isBlocked ? undefined : c.scheduledStart),
+            scheduledEnd: savedEndDate || (isBlocked ? undefined : c.scheduledEnd),
+            scheduledTime: savedStartDate ? savedStartDate.slice(0, 11) : undefined,
+            reason: isBlocked ? (reason || 'Кредитний ліміт') : (otherSourceLocks[0]?.reason || ''),
             lockDetails: newLockDetails,
             editDate: formattedDate,
             editUser: 'Дубінін Микита Валерійович'
@@ -253,7 +274,22 @@ export default function App() {
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const isScheduled = isBlocked && Boolean(startDate || endDate);
+    
+    const formatSaveDate = (dStr?: string) => {
+      if (!dStr) return undefined;
+      if (dStr.includes('T')) {
+        const [datePart, timePart] = dStr.split('T');
+        const ymd = datePart.split('-');
+        if (ymd.length === 3) {
+          return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
+        }
+      }
+      return dStr;
+    };
+
+    const savedStartDate = formatSaveDate(startDate);
+    const savedEndDate = formatSaveDate(endDate);
+    const isScheduled = isBlocked && Boolean(savedStartDate || savedEndDate);
 
     if (isBlocked) {
       setObjectLocks((prev) => {
@@ -267,8 +303,8 @@ export default function App() {
             reason: reason || 'Блокування НКЦ',
             lockDate: formattedDate,
             lockedBy: 'Дубінін Микита Валерійович',
-            startDate,
-            endDate,
+            startDate: savedStartDate,
+            endDate: savedEndDate,
             isScheduled
           };
           return updated;
@@ -281,8 +317,8 @@ export default function App() {
             reason: reason || 'Блокування НКЦ',
             lockDate: formattedDate,
             lockedBy: 'Дубінін Микита Валерійович',
-            startDate,
-            endDate,
+            startDate: savedStartDate,
+            endDate: savedEndDate,
             isScheduled
           };
           return [newLock, ...prev];
@@ -304,8 +340,8 @@ export default function App() {
             const newDetail = {
               source: targetType,
               reason: reason || 'Блокування НКЦ',
-              startDate,
-              endDate,
+              startDate: savedStartDate,
+              endDate: savedEndDate,
               isScheduled
             };
             return {
