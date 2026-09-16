@@ -227,15 +227,16 @@ export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = (
     <div id="unlocked-queue-page" style={{ padding: '0 15px' }}>
       {/* Title */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 10 }}>
-        <div style={{ width: onNavigateBack ? 220 : 0 }}>
+        <div style={{ minWidth: onNavigateBack ? 280 : 0 }}>
           {onNavigateBack && (
             <button
               type="button"
               className="btn btn-default btn-sm"
               onClick={onNavigateBack}
+              title="До сторінки блокування автообробки"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
             >
-              <span>←</span> Назад до реєстру блокувань
+              <span>←</span> До сторінки блокування автообробки
             </button>
           )}
         </div>
@@ -247,7 +248,7 @@ export const UnlockedQueueOrdersPage: React.FC<UnlockedQueueOrdersPageProps> = (
             Реєстр замовлень, які вийшли з буфера після зняття блокування з клієнта та проходять повторне автоопрацювання (тільки для перегляду)
           </div>
         </div>
-        <div style={{ width: onNavigateBack ? 220 : 0 }}></div>
+        <div style={{ minWidth: onNavigateBack ? 280 : 0 }}></div>
       </div>
 
       {/* Top Filter Panel */}

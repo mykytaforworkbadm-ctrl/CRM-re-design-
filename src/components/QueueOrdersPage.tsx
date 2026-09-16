@@ -256,23 +256,23 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
     <div id="queue-orders-buffer-page" style={{ padding: '0 15px' }}>
       {/* Title and Top Navigation if drilled down */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 5 }}>
-        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}>
+        <div style={{ minWidth: onNavigateBack ? 280 : 0 }}>
           {onNavigateBack && (
             <button
               type="button"
               className="btn btn-default btn-sm"
               onClick={onNavigateBack}
-              title={returnClient ? `Назад до картки клієнта ${returnClient.clCode} (${returnClient.clName})` : 'Назад до реєстру блокувань'}
+              title={returnClient ? `До картки клієнта ${returnClient.clCode} (${returnClient.clName})` : 'До сторінки блокування автообробки'}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
             >
-              <span>←</span> {returnClient ? `Назад до картки клієнта ${returnClient.clCode}` : 'Назад до реєстру блокувань'}
+              <span>←</span> {returnClient ? `До картки клієнта ${returnClient.clCode}` : 'До сторінки блокування автообробки'}
             </button>
           )}
         </div>
         <div className="text-center" style={{ flex: 1 }}>
           <h2 style={{ fontFamily: 'fantasy', margin: 0 }}>Замовлення у черзі (Буфер)</h2>
         </div>
-        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}></div>
+        <div style={{ minWidth: onNavigateBack ? 280 : 0 }}></div>
       </div>
 
       {/* Drill-down notification if applicable */}

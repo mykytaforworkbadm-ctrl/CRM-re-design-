@@ -449,9 +449,10 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
             type="button"
             className="btn btn-default btn-sm"
             onClick={onNavigateBack}
+            title="До сторінки блокування автообробки"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
           >
-            <span>←</span> Назад до реєстру блокувань
+            <span>←</span> До сторінки блокування автообробки
           </button>
         </div>
         <div className="text-center" style={{ flex: 1 }}>
