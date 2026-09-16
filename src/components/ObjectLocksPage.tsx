@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ObjectLockRecord, EntityType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ObjectLockRecord, EntityType, ClientRecord } from '../types';
 import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
 
 interface ObjectLocksPageProps {
@@ -8,6 +8,9 @@ interface ObjectLocksPageProps {
   onOpenMassAction: () => void;
   onUpdateLock?: (updatedLock: ObjectLockRecord) => void;
   onNavigateBack?: () => void;
+  returnClient?: ClientRecord | null;
+  initialFilterType?: string;
+  initialSearchQuery?: string;
 }
 
 export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
@@ -15,11 +18,26 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
   onRemoveLock,
   onOpenMassAction,
   onUpdateLock,
-  onNavigateBack
+  onNavigateBack,
+  returnClient,
+  initialFilterType,
+  initialSearchQuery
 }) => {
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>(initialFilterType || 'all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'scheduled'>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
+
+  useEffect(() => {
+    if (initialFilterType) {
+      setFilterType(initialFilterType);
+    }
+  }, [initialFilterType]);
+
+  useEffect(() => {
+    if (initialSearchQuery) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
 
   // Editing scheduled lock modal state (Requirement 2.8)
   const [editingLock, setEditingLock] = useState<ObjectLockRecord | null>(null);
@@ -152,15 +170,16 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
   return (
     <div id="object-locks-page" style={{ padding: '0 15px' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, marginTop: 10 }}>
-        <div style={{ width: onNavigateBack ? 220 : 0 }}>
+        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}>
           {onNavigateBack && (
             <button
               type="button"
               className="btn btn-default btn-sm"
               onClick={onNavigateBack}
+              title={returnClient ? `Назад до картки клієнта ${returnClient.clCode} (${returnClient.clName})` : 'Назад до реєстру блокувань'}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
             >
-              <span>←</span> Назад до реєстру блокувань
+              <span>←</span> {returnClient ? `Назад до картки клієнта ${returnClient.clCode}` : 'Назад до реєстру блокувань'}
             </button>
           )}
         </div>
@@ -169,7 +188,7 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
             Реєстр блокувань об'єктів (Маршрути, РСП, Склади, Об'єднання)
           </h2>
         </div>
-        <div style={{ width: onNavigateBack ? 220 : 0 }}></div>
+        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}></div>
       </div>
 
       {/* Top Filter Panel in exact CRM style */}
@@ -257,7 +276,7 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                       <div className="ui-th-div">Тип об'єкта</div>
                     </th>
                     <th style={{ width: '240px' }} className="ui-th-column ui-th-ltr">
-                      <div className="ui-th-div">Назва / Код об'єкта</div>
+                      <div className="ui-th-div">Назва об'єкта</div>
                     </th>
                     <th style={{ width: '110px', textAlign: 'center' }} className="ui-th-column ui-th-ltr">
                       <div className="ui-th-div">Статус</div>
@@ -426,7 +445,6 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                       </td>
                       <td>
                         <strong>{lock.targetName}</strong>
-                        {lock.targetCode && <span style={{ color: '#666', fontSize: 12 }}> (код: {lock.targetCode})</span>}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {lock.isScheduled ? (

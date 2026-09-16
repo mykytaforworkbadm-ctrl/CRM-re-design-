@@ -94,29 +94,46 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
 
   const handleSimulateFileImport = () => {
     if (!importFileName && activeTab === 'clients') {
-      setImportFileName('clients_list.csv');
+      setImportFileName('clients_list.xlsx');
     }
+    const totalProcessed = 12;
     if (activeTab === 'clients') {
-      const sample = filteredClients.slice(0, 5).map((c) => c.id);
+      const sample = filteredClients.slice(0, 10).map((c) => c.id);
       setSelectedClientIds(sample);
-      setImportStatusMsg(`Успішно зіставлено: обрано ${sample.length} клієнтів з файлу.`);
+      const foundCount = sample.length;
+      const notFoundCount = Math.max(0, totalProcessed - foundCount);
+      setImportStatusMsg(
+        `Оброблено рядків у файлі: ${totalProcessed}. Знайдено й позначено клієнтів: ${foundCount}. Не знайдено в базі: ${notFoundCount}.`
+      );
     } else if (activeTab === 'routes') {
       const sample = filteredRoutes.slice(0, 4).map((r) => r.value);
       setSelectedRouteIds(sample);
-      setImportStatusMsg(`Успішно зіставлено: обрано ${sample.length} маршрутів з файлу.`);
+      const foundCount = sample.length;
+      const notFoundCount = Math.max(0, totalProcessed - foundCount);
+      setImportStatusMsg(
+        `Оброблено рядків у файлі: ${totalProcessed}. Знайдено й позначено маршрутів: ${foundCount}. Не знайдено в базі: ${notFoundCount}.`
+      );
     } else if (activeTab === 'rsps') {
       const sample = filteredRsps.slice(0, 3).map((r) => r.value);
       setSelectedRspIds(sample);
-      setImportStatusMsg(`Успішно зіставлено: обрано ${sample.length} РСП з файлу.`);
+      const foundCount = sample.length;
+      const notFoundCount = Math.max(0, totalProcessed - foundCount);
+      setImportStatusMsg(
+        `Оброблено рядків у файлі: ${totalProcessed}. Знайдено й позначено РСП: ${foundCount}. Не знайдено в базі: ${notFoundCount}.`
+      );
     } else if (activeTab === 'depts') {
       const sample = filteredDepts.slice(0, 3).map((d) => d.value);
       setSelectedDeptIds(sample);
-      setImportStatusMsg(`Успішно зіставлено: обрано ${sample.length} складів з файлу.`);
+      const foundCount = sample.length;
+      const notFoundCount = Math.max(0, totalProcessed - foundCount);
+      setImportStatusMsg(
+        `Оброблено рядків у файлі: ${totalProcessed}. Знайдено й позначено складів: ${foundCount}. Не знайдено в базі: ${notFoundCount}.`
+      );
     }
     setTimeout(() => {
       setShowImportModal(false);
       setImportStatusMsg(null);
-    }, 1200);
+    }, 2500);
   };
 
   if (!isOpen) return null;
@@ -486,7 +503,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                       onChange={(e) => setClientUnionFilter(Number(e.target.value))}
                     >
                       <option value={0}>Всі об'єднання</option>
-                      {UNIONS_DATA.filter((u) => u.value !== 0).map((u) => (
+                      {UNIONS_DATA.filter((u) => u.value !== 0 && !u.label.startsWith('A_')).map((u) => (
                         <option key={u.value} value={u.value}>{u.label}</option>
                       ))}
                     </select>
@@ -505,7 +522,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                       className="btn btn-default btn-sm"
                       style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4, height: 34 }}
                       onClick={() => setShowImportModal(true)}
-                      title="Імпорт списку кодів з файлу (CSV/Excel)"
+                      title="Імпорт списку кодів з файлу (.xlsx)"
                     >
                       <span className="glyphicon glyphicon-open"></span> Імпорт із файлу
                     </button>
@@ -604,8 +621,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                               onChange={handleToggleSelectAll}
                             />
                           </th>
-                          <th style={{ width: 90 }}>ID</th>
-                          <th>Код / Назва маршруту</th>
+                          <th>Назва маршруту</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -630,7 +646,6 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                                   onChange={() => {}}
                                 />
                               </td>
-                              <td>{r.value}</td>
                               <td>{r.label}</td>
                             </tr>
                           );
@@ -674,7 +689,6 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                               onChange={handleToggleSelectAll}
                             />
                           </th>
-                          <th style={{ width: 110 }}>Код</th>
                           <th>Назва РСП</th>
                         </tr>
                       </thead>
@@ -700,7 +714,6 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                                   onChange={() => {}}
                                 />
                               </td>
-                              <td>{rsp.code || rsp.value}</td>
                               <td>{rsp.label}</td>
                             </tr>
                           );
@@ -744,7 +757,6 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                               onChange={handleToggleSelectAll}
                             />
                           </th>
-                          <th style={{ width: 110 }}>Код</th>
                           <th>Назва складу</th>
                         </tr>
                       </thead>
@@ -770,7 +782,6 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                                   onChange={() => {}}
                                 />
                               </td>
-                              <td>{d.code || d.value}</td>
                               <td>{d.label}</td>
                             </tr>
                           );
@@ -914,14 +925,14 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                 </div>
                 <div className="modal-body" style={{ padding: 15 }}>
                   <p style={{ fontSize: 13, color: '#333', marginBottom: 12 }}>
-                    Оберіть файл (CSV, TXT або Excel) зі списком кодів для автоматичного виділення об'єктів у поточній вкладці:
+                    Оберіть файл Excel (.xlsx) зі списком кодів для автоматичного виділення об'єктів у поточній вкладці:
                   </p>
                   <div className="form-group" style={{ marginBottom: 12 }}>
-                    <label style={{ fontSize: 12, fontWeight: 'bold' }}>Файл для імпорту:</label>
+                    <label style={{ fontSize: 12, fontWeight: 'bold' }}>Файл для імпорту (.xlsx):</label>
                     <input
                       type="file"
                       className="form-control"
-                      accept=".csv,.txt,.xls,.xlsx"
+                      accept=".xlsx"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
                           setImportFileName(e.target.files[0].name);
@@ -935,7 +946,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                     </div>
                   )}
                   <div style={{ fontSize: 11, color: '#777', marginTop: 8 }}>
-                    * Формат файлу: один код або ID об'єкта в кожному рядку.
+                    * Формат файлу: один код або ID об'єкта в кожному рядку файлу Excel (.xlsx).
                   </div>
                 </div>
                 <div className="modal-footer" style={{ padding: '8px 15px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

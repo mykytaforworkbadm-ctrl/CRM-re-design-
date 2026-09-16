@@ -148,10 +148,6 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
                     <strong style={{ color: '#333' }}>{row.type}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666' }}>Код: </span>
-                    <strong style={{ color: '#333' }}>{row.code || '-'}</strong>
-                  </div>
-                  <div>
                     <span style={{ color: '#666' }}>Назва: </span>
                     <strong style={{ color: '#333' }}>{row.name}</strong>
                   </div>

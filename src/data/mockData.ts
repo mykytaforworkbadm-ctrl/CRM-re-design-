@@ -106,7 +106,7 @@ export const RSPS_DATA = [
   { value: 45, label: 'Хмельницький', code: 'RSP_KM' },
   { value: 1391893, label: 'РЦ Вінниця', code: 'RSP_VN_RC' },
   { value: 9, label: 'Львів', code: 'RSP_LV' },
-  { value: 1391894, label: 'РЦ Львів Пасіки</option>', code: 'RSP_LV_PAS' },
+  { value: 1391894, label: 'РЦ Львів Пасіки', code: 'RSP_LV_PAS' },
   { value: 44, label: 'Івано-Франківськ', code: 'RSP_IF' },
   { value: 738244, label: 'Київ Андакта', code: 'RSP_KI_AND' },
   { value: 181528, label: 'Ударники', code: 'RSP_DN_UD' },
@@ -798,7 +798,7 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     targetType: 'Маршрут',
     targetCode: '1299',
     targetName: 'BT_KI_01',
-    reason: 'Кредитний ліміт',
+    reason: 'Перекриття автошляху',
     lockDate: '18.08.2026 08:00:00',
     lockedBy: 'Служба логістики',
     isScheduled: false

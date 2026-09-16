@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClientRecord, ObjectLockRecord, QueueOrder, QueueColumnFilters } from '../types';
-import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
+import { MANUAL_BLOCKING_REASONS, RSPS_DATA, DEPTS_DATA, ROUTES_DATA } from '../data/mockData';
 
 interface ClientDetailPageProps {
   client: ClientRecord;
@@ -171,7 +171,7 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
         }
       }
     } else if (type === 'РСП') {
-      name = client.rspName || (client.rspId ? `РСП #${client.rspId}` : 'Не призначено');
+      name = client.rspName || (client.rspId ? RSPS_DATA.find((r) => r.value === client.rspId)?.label || 'Не призначено' : 'Не призначено');
       if (client.rspName || client.rspId) {
         const found = objectLocks.find(
           (o) =>
@@ -191,7 +191,7 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
         }
       }
     } else if (type === 'Маршрут') {
-      name = client.routeName || (client.routeId ? `Маршрут #${client.routeId}` : 'Не призначено');
+      name = client.routeName || (client.routeId ? ROUTES_DATA.find((r) => r.value === client.routeId)?.label || 'Не призначено' : 'Не призначено');
       if (client.routeName || client.routeId) {
         const found = objectLocks.find(
           (o) =>
@@ -211,7 +211,7 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
         }
       }
     } else if (type === 'Склад') {
-      name = client.deptName || (client.deptId ? `Склад #${client.deptId}` : 'Не призначено');
+      name = client.deptName || (client.deptId ? DEPTS_DATA.find((d) => d.value === client.deptId)?.label || 'Не призначено' : 'Не призначено');
       if (client.deptName || client.deptId) {
         const found = objectLocks.find(
           (o) =>

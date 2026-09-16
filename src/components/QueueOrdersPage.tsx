@@ -9,6 +9,7 @@ interface QueueOrdersPageProps {
   onClearInitialFilter?: () => void;
   onNavigateBack?: () => void;
   onUpdateOrders?: (updatedOrders: QueueOrder[]) => void;
+  returnClient?: ClientRecord | null;
 }
 
 export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
@@ -17,7 +18,8 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
   initialShowIgnoredOnly,
   onClearInitialFilter,
   onNavigateBack,
-  onUpdateOrders
+  onUpdateOrders,
+  returnClient
 }) => {
   // Local mutable orders copy if onUpdateOrders is provided
   const [localOrders, setLocalOrders] = useState<QueueOrder[]>(orders);
@@ -254,22 +256,23 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
     <div id="queue-orders-buffer-page" style={{ padding: '0 15px' }}>
       {/* Title and Top Navigation if drilled down */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 5 }}>
-        <div>
+        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}>
           {onNavigateBack && (
             <button
               type="button"
               className="btn btn-default btn-sm"
               onClick={onNavigateBack}
+              title={returnClient ? `Назад до картки клієнта ${returnClient.clCode} (${returnClient.clName})` : 'Назад до реєстру блокувань'}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
             >
-              <span>←</span> Назад до реєстру блокувань
+              <span>←</span> {returnClient ? `Назад до картки клієнта ${returnClient.clCode}` : 'Назад до реєстру блокувань'}
             </button>
           )}
         </div>
         <div className="text-center" style={{ flex: 1 }}>
           <h2 style={{ fontFamily: 'fantasy', margin: 0 }}>Замовлення у черзі (Буфер)</h2>
         </div>
-        <div style={{ width: onNavigateBack ? 160 : 0 }}></div>
+        <div style={{ minWidth: onNavigateBack ? 260 : 0 }}></div>
       </div>
 
       {/* Drill-down notification if applicable */}
@@ -327,7 +330,7 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
               onChange={(e) => setFilterUnion(e.target.value)}
             >
               <option value="">Всі об'єднання</option>
-              {UNIONS_DATA.filter((u) => u.value !== 0).map((u) => (
+              {UNIONS_DATA.filter((u) => u.value !== 0 && !u.label.startsWith('A_')).map((u) => (
                 <option key={u.value} value={u.label}>
                   {u.label}
                 </option>

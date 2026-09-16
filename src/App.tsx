@@ -62,6 +62,8 @@ export default function App() {
   const [drilldownClient, setDrilldownClient] = useState<ClientRecord | null>(null);
   const [drilldownShowIgnoredOnly, setDrilldownShowIgnoredOnly] = useState<boolean>(false);
   const [modalClient, setModalClient] = useState<ClientRecord | null>(null);
+  const [returnClientContext, setReturnClientContext] = useState<ClientRecord | null>(null);
+  const [objectLocksFilterPreset, setObjectLocksFilterPreset] = useState<{ type?: string; name?: string } | null>(null);
 
   // Registry table controlled state (preserved when navigating back)
   const [tablePage, setTablePage] = useState<number>(1);
@@ -115,7 +117,11 @@ export default function App() {
     }
   }, [clients]);
 
-  const navigateTo = (page: AppPage, clientToNav?: ClientRecord | null) => {
+  const navigateTo = (page: AppPage, clientToNav?: ClientRecord | null, keepContext: boolean = false) => {
+    if (!keepContext) {
+      setReturnClientContext(null);
+      setObjectLocksFilterPreset(null);
+    }
     if (page === 'registry') window.location.hash = '/auto-processing/client-locks';
     else if (page === 'buffer') window.location.hash = '/auto-processing/buffer-queue';
     else if (page === 'objects') window.location.hash = '/auto-processing/object-locks';
@@ -129,6 +135,19 @@ export default function App() {
       setDrilldownClient(null);
     }
     setCurrentPage(page);
+  };
+
+  const handleNavigateToObjectLocksFromClient = (targetType?: string, targetName?: string) => {
+    const activeClient = modalClient || selectedClient;
+    if (activeClient) {
+      setReturnClientContext(activeClient);
+    }
+    if (targetType || targetName) {
+      setObjectLocksFilterPreset({ type: targetType, name: targetName });
+    } else {
+      setObjectLocksFilterPreset(null);
+    }
+    navigateTo('objects', null, true);
   };
 
   // Main filter panel state with 7 radio choices, defaulting to 'client_code'
@@ -1044,11 +1063,22 @@ export default function App() {
             orders={orders}
             initialClientFilter={drilldownClient}
             initialShowIgnoredOnly={drilldownShowIgnoredOnly}
+            returnClient={returnClientContext}
             onClearInitialFilter={() => {
               setDrilldownClient(null);
               setDrilldownShowIgnoredOnly(false);
             }}
-            onNavigateBack={() => navigateTo('registry')}
+            onNavigateBack={() => {
+              if (returnClientContext) {
+                const clientToReturn = returnClientContext;
+                setReturnClientContext(null);
+                setSelectedClient(clientToReturn);
+                setModalClient(clientToReturn);
+                navigateTo('client', clientToReturn);
+              } else {
+                navigateTo('registry');
+              }
+            }}
           />
         )}
 
@@ -1059,7 +1089,21 @@ export default function App() {
             onRemoveLock={handleRemoveObjectLock}
             onOpenMassAction={() => setIsMassActionOpen(true)}
             onUpdateLock={handleUpdateObjectLock}
-            onNavigateBack={() => navigateTo('registry')}
+            returnClient={returnClientContext}
+            initialFilterType={objectLocksFilterPreset?.type}
+            initialSearchQuery={objectLocksFilterPreset?.name}
+            onNavigateBack={() => {
+              if (returnClientContext) {
+                const clientToReturn = returnClientContext;
+                setReturnClientContext(null);
+                setObjectLocksFilterPreset(null);
+                setSelectedClient(clientToReturn);
+                setModalClient(clientToReturn);
+                navigateTo('client', clientToReturn);
+              } else {
+                navigateTo('registry');
+              }
+            }}
           />
         )}
 
@@ -1079,8 +1123,14 @@ export default function App() {
             allOrders={orders}
             onSaveClientLock={handleSaveLock}
             onUpdateOrders={(updated) => setOrders(updated)}
-            onNavigateBack={() => navigateTo('registry')}
-            onNavigateToObjectLocks={() => navigateTo('objects')}
+            onNavigateBack={() => {
+              setReturnClientContext(null);
+              setObjectLocksFilterPreset(null);
+              navigateTo('registry');
+            }}
+            onNavigateToObjectLocks={(entityType, entityName) => {
+              handleNavigateToObjectLocksFromClient(entityType, entityName);
+            }}
           />
         )}
       </div>
