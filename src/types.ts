@@ -83,7 +83,7 @@ export interface ObjectLockRecord {
   isScheduled?: boolean;
 }
 
-export type AppPage = 'registry' | 'buffer' | 'objects' | 'unlocked-queue';
+export type AppPage = 'registry' | 'buffer' | 'objects' | 'unlocked-queue' | 'client';
 
 export type ProcessingStatus =
   | 'Заблоковано'

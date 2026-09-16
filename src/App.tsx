@@ -8,11 +8,11 @@ import { Navbar } from './components/Navbar';
 import { FilterPanel } from './components/FilterPanel';
 import { ClientsTable } from './components/ClientsTable';
 import { EntityRegistryTable } from './components/EntityRegistryTable';
-import { ChangeLockModal } from './components/ChangeLockModal';
 import { ChangeObjectLockModal } from './components/ChangeObjectLockModal';
 import { QueueOrdersPage } from './components/QueueOrdersPage';
 import { ObjectLocksPage } from './components/ObjectLocksPage';
 import { UnlockedQueueOrdersPage } from './components/UnlockedQueueOrdersPage';
+import { ClientDetailPage } from './components/ClientDetailPage';
 import { MassActionModal } from './components/MassActionModal';
 import {
   INITIAL_CLIENTS,
@@ -45,42 +45,91 @@ export default function App() {
     if (hash.includes('buffer')) return 'buffer';
     if (hash.includes('object')) return 'objects';
     if (hash.includes('unlocked')) return 'unlocked-queue';
+    if (hash.includes('client/')) return 'client';
     return 'registry';
   };
 
   const [currentPage, setCurrentPage] = useState<AppPage>(getPageFromHash);
 
-  // Sync hash changes
-  React.useEffect(() => {
-    const handleHashChange = () => {
-      setCurrentPage(getPageFromHash());
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  const navigateTo = (page: AppPage) => {
-    if (page === 'registry') window.location.hash = '/auto-processing/client-locks';
-    else if (page === 'buffer') window.location.hash = '/auto-processing/buffer-queue';
-    else if (page === 'objects') window.location.hash = '/auto-processing/object-locks';
-    else if (page === 'unlocked-queue') window.location.hash = '/auto-processing/unlocked-queue';
-    
-    if (page !== 'buffer') {
-      setDrilldownClient(null);
-    }
-    setCurrentPage(page);
-  };
-
   // Core records
   const [clients, setClients] = useState<ClientRecord[]>(INITIAL_CLIENTS);
   const [objectLocks, setObjectLocks] = useState<ObjectLockRecord[]>(INITIAL_OBJECT_LOCKS);
-  const [orders] = useState<QueueOrder[]>(QUEUE_ORDERS);
+  const [orders, setOrders] = useState<QueueOrder[]>(QUEUE_ORDERS);
   const [unlockedOrders] = useState<UnlockedQueueOrder[]>(UNLOCKED_QUEUE_ORDERS);
 
   // Selected client & drilldown states
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(INITIAL_CLIENTS[1] || null);
   const [drilldownClient, setDrilldownClient] = useState<ClientRecord | null>(null);
   const [drilldownShowIgnoredOnly, setDrilldownShowIgnoredOnly] = useState<boolean>(false);
+  const [modalClient, setModalClient] = useState<ClientRecord | null>(null);
+
+  // Registry table controlled state (preserved when navigating back)
+  const [tablePage, setTablePage] = useState<number>(1);
+  const [tablePageSize, setTablePageSize] = useState<number>(10);
+  const [tableSortField, setTableSortField] = useState<keyof ClientRecord | null>('clName');
+  const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Sync hash changes
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const page = getPageFromHash();
+      setCurrentPage(page);
+      if (page === 'client') {
+        const hash = window.location.hash.toLowerCase();
+        const parts = hash.split('client/');
+        if (parts.length > 1) {
+          const rawCode = parts[1].split('/')[0].split('?')[0].trim();
+          if (rawCode) {
+            const found = clients.find(
+              (c) => c.clCode.toLowerCase() === rawCode.toLowerCase() || String(c.id) === rawCode
+            );
+            if (found) {
+              setSelectedClient(found);
+              setModalClient(found);
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [clients]);
+
+  // Initial client hash resolution
+  React.useEffect(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash.includes('client/')) {
+      const parts = hash.split('client/');
+      if (parts.length > 1) {
+        const rawCode = parts[1].split('/')[0].split('?')[0].trim();
+        if (rawCode) {
+          const found = clients.find(
+            (c) => c.clCode.toLowerCase() === rawCode.toLowerCase() || String(c.id) === rawCode
+          );
+          if (found) {
+            setSelectedClient(found);
+            setModalClient(found);
+          }
+        }
+      }
+    }
+  }, [clients]);
+
+  const navigateTo = (page: AppPage, clientToNav?: ClientRecord | null) => {
+    if (page === 'registry') window.location.hash = '/auto-processing/client-locks';
+    else if (page === 'buffer') window.location.hash = '/auto-processing/buffer-queue';
+    else if (page === 'objects') window.location.hash = '/auto-processing/object-locks';
+    else if (page === 'unlocked-queue') window.location.hash = '/auto-processing/unlocked-queue';
+    else if (page === 'client') {
+      const targetCl = clientToNav || modalClient || selectedClient;
+      window.location.hash = `/auto-processing/client/${targetCl?.clCode || targetCl?.id || ''}`;
+    }
+    
+    if (page !== 'buffer') {
+      setDrilldownClient(null);
+    }
+    setCurrentPage(page);
+  };
 
   // Main filter panel state with 7 radio choices, defaulting to 'client_code'
   const [filters, setFilters] = useState<FilterState>({
@@ -116,9 +165,6 @@ export default function App() {
   });
 
   // Modals state
-  const [isChangeLockOpen, setIsChangeLockOpen] = useState<boolean>(false);
-  const [modalClient, setModalClient] = useState<ClientRecord | null>(null);
-  
   const [isChangeObjectLockOpen, setIsChangeObjectLockOpen] = useState<boolean>(false);
   const [modalObjectRow, setModalObjectRow] = useState<EntityRegistryRow | null>(null);
 
@@ -206,10 +252,11 @@ export default function App() {
     setFilters(updated);
   };
 
-  // Open "Зміна блокування" Modal for client
+  // Open Client Page (Правка 13: сторінка замість модального вікна)
   const handleOpenChangeLock = (client: ClientRecord) => {
+    setSelectedClient(client);
     setModalClient(client);
-    setIsChangeLockOpen(true);
+    navigateTo('client', client);
   };
 
   // Open "Зміна блокування" Modal for object (Union, RSP, Warehouse, Route)
@@ -246,8 +293,8 @@ export default function App() {
     const savedStartDate = formatSaveDate(startDateTime);
     const savedEndDate = formatSaveDate(endDateTime);
 
-    setClients((prev) =>
-      prev.map((c) => {
+    setClients((prev) => {
+      return prev.map((c) => {
         if (c.id === clientId) {
           // Preserve other source locks if any (e.g. from Union, Route, RSP), replace Client source lock
           const otherSourceLocks = (c.lockDetails || []).filter((d) => d.source !== 'Клієнт');
@@ -264,7 +311,7 @@ export default function App() {
             : [];
           const newLockDetails = [...clientLockDetail, ...otherSourceLocks];
 
-          return {
+          const updatedClient: ClientRecord = {
             ...c,
             isBlocked: isBlocked || otherSourceLocks.length > 0,
             isScheduled: isScheduled || otherSourceLocks.some((d) => d.isScheduled),
@@ -276,10 +323,17 @@ export default function App() {
             editDate: formattedDate,
             editUser: 'Дубінін Микита Валерійович'
           };
+          if (modalClient && modalClient.id === clientId) {
+            setModalClient(updatedClient);
+          }
+          if (selectedClient && selectedClient.id === clientId) {
+            setSelectedClient(updatedClient);
+          }
+          return updatedClient;
         }
         return c;
-      })
-    );
+      });
+    });
   };
 
   // Save single object lock change (Union, RSP, Warehouse, Route)
@@ -959,6 +1013,14 @@ export default function App() {
                 showScheduledLocks={Boolean(filters.showScheduledLocks)}
                 showIgnoredOrders={Boolean(filters.showIgnoredOrders)}
                 showOnlyLocked={Boolean(filters.showOnlyLocked)}
+                tablePage={tablePage}
+                onTablePageChange={setTablePage}
+                pageSize={tablePageSize}
+                onPageSizeChange={setTablePageSize}
+                sortField={tableSortField}
+                onSortFieldChange={setTableSortField}
+                sortDir={tableSortDir}
+                onSortDirChange={setTableSortDir}
               />
             )}
 
@@ -1008,24 +1070,20 @@ export default function App() {
             onNavigateBack={() => navigateTo('registry')}
           />
         )}
-      </div>
 
-      {/* Модальне вікно: Зміна блокування автоімпорту клієнта */}
-      <ChangeLockModal
-        isOpen={isChangeLockOpen}
-        client={modalClient}
-        objectLocks={objectLocks}
-        onClose={() => setIsChangeLockOpen(false)}
-        onSave={handleSaveLock}
-        onOpenQueueOrders={(c) => {
-          setIsChangeLockOpen(false);
-          handleDrilldownBuffer(c);
-        }}
-        onNavigateToObjectLocks={() => {
-          setIsChangeLockOpen(false);
-          navigateTo('objects');
-        }}
-      />
+        {/* VIEW 5: Сторінка клієнта (Правка 13) */}
+        {currentPage === 'client' && (modalClient || selectedClient) && (
+          <ClientDetailPage
+            client={(modalClient || selectedClient)!}
+            objectLocks={objectLocks}
+            allOrders={orders}
+            onSaveClientLock={handleSaveLock}
+            onUpdateOrders={(updated) => setOrders(updated)}
+            onNavigateBack={() => navigateTo('registry')}
+            onNavigateToObjectLocks={() => navigateTo('objects')}
+          />
+        )}
+      </div>
 
       {/* Модальне вікно: Зміна блокування об'єкта (Об'єднання, РСП, Склад, Маршрут) */}
       <ChangeObjectLockModal

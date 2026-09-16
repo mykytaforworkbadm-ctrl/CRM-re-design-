@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ClientRecord, ColumnFilters } from '../types';
 
 interface ClientsTableProps {
@@ -12,6 +12,14 @@ interface ClientsTableProps {
   showScheduledLocks?: boolean;
   showIgnoredOrders?: boolean;
   showOnlyLocked?: boolean;
+  tablePage?: number;
+  onTablePageChange?: (page: number) => void;
+  pageSize?: number;
+  onPageSizeChange?: (size: number) => void;
+  sortField?: keyof ClientRecord | null;
+  onSortFieldChange?: (field: keyof ClientRecord | null) => void;
+  sortDir?: 'asc' | 'desc';
+  onSortDirChange?: (dir: 'asc' | 'desc') => void;
 }
 
 export const getScheduledObject = (client: ClientRecord): string => {
@@ -31,12 +39,58 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
   onColumnFilterChange,
   showScheduledLocks = false,
   showIgnoredOrders = false,
-  showOnlyLocked = false
+  showOnlyLocked = false,
+  tablePage: controlledPage,
+  onTablePageChange,
+  pageSize: controlledPageSize,
+  onPageSizeChange,
+  sortField: controlledSortField,
+  onSortFieldChange,
+  sortDir: controlledSortDir,
+  onSortDirChange
 }) => {
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [sortField, setSortField] = useState<keyof ClientRecord | null>('clName');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [internalPage, setInternalPage] = useState<number>(1);
+  const [internalPageSize, setInternalPageSize] = useState<number>(10);
+  const [internalSortField, setInternalSortField] = useState<keyof ClientRecord | null>('clName');
+  const [internalSortDir, setInternalSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const currentPage = controlledPage !== undefined ? controlledPage : internalPage;
+  const setCurrentPage = (pageOrFn: number | ((p: number) => number)) => {
+    const nextPage = typeof pageOrFn === 'function' ? pageOrFn(currentPage) : pageOrFn;
+    if (onTablePageChange) onTablePageChange(nextPage);
+    else setInternalPage(nextPage);
+  };
+
+  const pageSize = controlledPageSize !== undefined ? controlledPageSize : internalPageSize;
+  const setPageSize = (size: number) => {
+    if (onPageSizeChange) onPageSizeChange(size);
+    else setInternalPageSize(size);
+  };
+
+  const sortField = controlledSortField !== undefined ? controlledSortField : internalSortField;
+  const setSortField = (field: keyof ClientRecord | null) => {
+    if (onSortFieldChange) onSortFieldChange(field);
+    else setInternalSortField(field);
+  };
+
+  const sortDir = controlledSortDir !== undefined ? controlledSortDir : internalSortDir;
+  const setSortDir = (dir: 'asc' | 'desc') => {
+    if (onSortDirChange) onSortDirChange(dir);
+    else setInternalSortDir(dir);
+  };
+
+  // Auto-scroll to selected client row when returning to registry
+  useEffect(() => {
+    if (selectedClientId) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(String(selectedClientId));
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedClientId, currentPage]);
 
   // Handle column filtering
   const filteredClients = clients.filter((c) => {
