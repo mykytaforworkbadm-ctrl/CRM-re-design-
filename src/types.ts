@@ -122,7 +122,7 @@ export interface UnlockedQueueOrder {
   statusComment: string; // Коментар до статусу
 }
 
-export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'rsp' | 'dept' | 'route';
+export type FilterFieldType = 'client_code' | 'client_name' | 'union' | 'corp' | 'rsp' | 'dept' | 'route';
 
 export interface EntityRegistryRow {
   id: string | number;
@@ -147,6 +147,7 @@ export interface FilterState {
   clientCode: string;
   clientName: string;
   unionId: number;
+  corpCode?: string;
   deptId: number;
   rspId: number;
   routeId: number;

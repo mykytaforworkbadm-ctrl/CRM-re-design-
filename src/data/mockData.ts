@@ -1,5 +1,29 @@
 import { ClientRecord, QueueOrder, ObjectLockRecord } from '../types';
 
+export interface BlockingReasonDefinition {
+  name: string;
+  type: 'manual' | 'system';
+}
+
+export const ALL_BLOCKING_REASONS: readonly BlockingReasonDefinition[] = [
+  { name: 'Блокування НКЦ', type: 'manual' },
+  { name: 'Пробне блокування', type: 'manual' },
+  { name: 'Технічне обслуговування', type: 'manual' },
+  { name: 'Перекриття автошляху', type: 'manual' },
+  { name: 'Планова інвентаризація', type: 'manual' },
+  { name: 'Кредитний ліміт', type: 'system' },
+  { name: 'Частковий кредитний ліміт', type: 'system' },
+  { name: 'Дебіторська заборгованість', type: 'system' }
+] as const;
+
+export const MANUAL_BLOCKING_REASONS = [
+  'Блокування НКЦ',
+  'Пробне блокування',
+  'Технічне обслуговування',
+  'Перекриття автошляху',
+  'Планова інвентаризація'
+] as const;
+
 export const UNIFIED_BLOCKING_REASONS = [
   'Кредитний ліміт',
   'Частковий кредитний ліміт',
@@ -1304,13 +1328,16 @@ export const QUEUE_ORDERS: QueueOrder[] = [
 ];
 
 export const CORPORATIONS_DATA = [
-  { value: 'all', label: 'Всі корпорації' },
+  { value: '', label: 'не обраний' },
   { value: 'К_63001', label: 'К_ФАРМАСТОР ХОЛДИНГ' },
   { value: 'К_51161', label: 'К_АВ МЕДТРЕЙД (ТОВ)' },
   { value: 'К_27118', label: 'К_Писаренко Л.Я.,ФОП, м.Київ' },
   { value: 'К_22314', label: 'К_Аннушка, Хелс Кеа ТОВ, м.Одеса' },
   { value: 'К_20933', label: 'К_Клизуб С.О. ФОП,смт.Гусятин,Тернопільська обл.' },
+  { value: 'К_15850', label: 'К_АГРОПРОМИСЛОВЕ НАУКОВО - ВИРОБНИЧЕ ПІДПРИЄМСТВО "ВІЗИТ"' },
+  { value: 'К_13626', label: 'К_ГЕЛІАНТУС ТОВ, м.Київ' },
   { value: 'К_11463', label: 'К_Колективне підприємство "Аптека -98"' },
+  { value: 'К_09807', label: 'К_СІРІУС-95, ТОВ' },
   { value: 'К_003677', label: 'К_ВАЙМА МВД, ТОВ' }
 ];
 

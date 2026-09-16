@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { EntityRegistryRow, EntityType } from '../types';
-import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
+import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
 
 interface ChangeObjectLockModalProps {
   row: EntityRegistryRow | null;
@@ -59,10 +59,10 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
   useEffect(() => {
     if (row) {
       setIsBlocked(row.isBlocked);
-      if (row.reason) {
+      if (row.reason && (MANUAL_BLOCKING_REASONS as readonly string[]).includes(row.reason)) {
         setReason(row.reason);
       } else {
-        // default reason based on entity type
+        // default manual reason based on entity type
         if (row.type === 'Склад') setReason('Технічне обслуговування');
         else if (row.type === 'Маршрут') setReason('Перекриття автошляху');
         else if (row.type === 'РСП') setReason('Планова інвентаризація');
@@ -234,12 +234,7 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
                       onChange={(e) => setReason(e.target.value)}
                       style={{ height: 30, borderRadius: 0 }}
                     >
-                      {reason && !UNIFIED_BLOCKING_REASONS.includes(reason as any) && (
-                        <option key={reason} value={reason}>
-                          {reason}
-                        </option>
-                      )}
-                      {UNIFIED_BLOCKING_REASONS.map((r) => (
+                      {MANUAL_BLOCKING_REASONS.map((r) => (
                         <option key={r} value={r}>
                           {r}
                         </option>

@@ -82,12 +82,13 @@ export default function App() {
   const [drilldownClient, setDrilldownClient] = useState<ClientRecord | null>(null);
   const [drilldownShowIgnoredOnly, setDrilldownShowIgnoredOnly] = useState<boolean>(false);
 
-  // Main filter panel state with 6 radio choices, defaulting to 'client_code'
+  // Main filter panel state with 7 radio choices, defaulting to 'client_code'
   const [filters, setFilters] = useState<FilterState>({
     filterBy: 'client_code',
     clientCode: '',
     clientName: '',
     unionId: 0,
+    corpCode: '',
     deptId: 0,
     rspId: 0,
     routeId: 0,
@@ -146,13 +147,32 @@ export default function App() {
       const q = currentFilters.clientName.trim().toLowerCase();
       result = result.filter((c) => c.clName.toLowerCase().includes(q));
     }
+    if (currentFilters.filterBy === 'corp' && currentFilters.corpCode && currentFilters.corpCode !== '' && currentFilters.corpCode !== 'all') {
+      result = result.filter(
+        (c) =>
+          c.corpCode === currentFilters.corpCode ||
+          c.corpName === currentFilters.corpCode ||
+          (c.corpName && c.corpName.includes(currentFilters.corpCode))
+      );
+    }
 
     setClients(result);
   };
 
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    if (newFilters.filterBy === 'corp') {
+      applyFilterLogic(newFilters);
+    } else if (newFilters.filterBy === 'client_code' || newFilters.filterBy === 'client_name') {
+      if (newFilters.filterBy !== filters.filterBy) {
+        applyFilterLogic(newFilters);
+      }
+    }
+  };
+
   // Handle Main Filter Apply
   const handleApplyFilter = () => {
-    if (filters.filterBy === 'client_code' || filters.filterBy === 'client_name') {
+    if (filters.filterBy === 'client_code' || filters.filterBy === 'client_name' || filters.filterBy === 'corp') {
       applyFilterLogic(filters);
     }
   };
@@ -164,6 +184,7 @@ export default function App() {
       clientCode: '',
       clientName: '',
       unionId: 0,
+      corpCode: '',
       deptId: 0,
       rspId: 0,
       routeId: 0,
@@ -913,10 +934,10 @@ export default function App() {
               </div>
             )}
 
-            {/* Панель фільтрів із 6 радіокнопками та кнопками керування */}
+            {/* Панель фільтрів із 7 радіокнопками та кнопками керування */}
             <FilterPanel
               filters={filters}
-              onFilterChange={setFilters}
+              onFilterChange={handleFilterChange}
               onApplyFilter={handleApplyFilter}
               onResetFilters={handleResetFilters}
               onToggleLocked={handleToggleLocked}
@@ -924,9 +945,9 @@ export default function App() {
             />
 
             {/* Динамічна таблиця:
-                - Якщо обрано «Код клієнта» або «Назва клієнта» -> Показуємо таблицю клієнтів
+                - Якщо обрано «Код клієнта», «Назва клієнта» або «Корпорація» -> Показуємо таблицю клієнтів
                 - Якщо обрано «Назва об'єднання», «РСП», «Склад» або «Маршрут» -> Показуємо реєстр відповідної сутності */}
-            {(filters.filterBy === 'client_code' || filters.filterBy === 'client_name') && (
+            {(filters.filterBy === 'client_code' || filters.filterBy === 'client_name' || filters.filterBy === 'corp') && (
               <ClientsTable
                 clients={clients}
                 selectedClientId={selectedClient?.id || null}

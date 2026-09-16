@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
-import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA, UNIFIED_BLOCKING_REASONS } from '../data/mockData';
+import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA, MANUAL_BLOCKING_REASONS } from '../data/mockData';
 
 interface MassActionModalProps {
   isOpen: boolean;
@@ -52,7 +52,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
   const [deptSearch, setDeptSearch] = useState<string>('');
 
   // Form states at bottom
-  const [reason, setReason] = useState<string>('Кредитний ліміт');
+  const [reason, setReason] = useState<string>('Блокування НКЦ');
   const [startDateTime, setStartDateTime] = useState<string>('');
   const [endDateTime, setEndDateTime] = useState<string>('');
 
@@ -793,7 +793,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                     >
-                      {UNIFIED_BLOCKING_REASONS.map((r) => (
+                      {MANUAL_BLOCKING_REASONS.map((r) => (
                         <option key={r} value={r}>
                           {r}
                         </option>

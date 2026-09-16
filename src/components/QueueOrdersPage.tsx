@@ -344,7 +344,8 @@ export const QueueOrdersPage: React.FC<QueueOrdersPageProps> = ({
               value={filterCorp}
               onChange={(e) => setFilterCorp(e.target.value)}
             >
-              {CORPORATIONS_DATA.map((c) => (
+              <option value="all">Всі корпорації</option>
+              {CORPORATIONS_DATA.filter((c) => c.value !== '' && c.value !== 'all').map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>

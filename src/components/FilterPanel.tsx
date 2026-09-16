@@ -1,6 +1,6 @@
 import React from 'react';
 import { FilterState, FilterFieldType } from '../types';
-import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA } from '../data/mockData';
+import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA } from '../data/mockData';
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -45,23 +45,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         marginBottom: 12
       }}
     >
-      {/* 6 Filter Fields with Radio Buttons in Exact Order:
-          1. Код клієнта
-          2. Назва клієнта
-          3. Назва об'єднання
-          4. РСП
-          5. Склад
-          6. Маршрут */}
-      <div className="row" style={{ marginLeft: -8, marginRight: -8 }}>
-        {/* Field 1: Код клієнта */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+      {/* 7 Filter Fields with Radio Buttons in Two Rows:
+          Row 1: Код клієнта, Назва клієнта, Назва об'єднання, Корпорація
+          Row 2: РСП, Склад, Маршрут */}
+      <div className="row" style={{ marginLeft: -6, marginRight: -6 }}>
+        {/* Row 1 - Field 1: Код клієнта */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_client_code"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'client_code' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'client_code' ? '#111' : '#555',
@@ -91,7 +87,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, clientCode: e.target.value })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'client_code' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'client_code' ? '#333' : '#888',
@@ -101,15 +97,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           />
         </div>
 
-        {/* Field 2: Назва клієнта */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+        {/* Row 1 - Field 2: Назва клієнта */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_client_name"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'client_name' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'client_name' ? '#111' : '#555',
@@ -139,7 +135,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, clientName: e.target.value })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'client_name' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'client_name' ? '#333' : '#888',
@@ -149,15 +145,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           />
         </div>
 
-        {/* Field 3: Назва об'єднання */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+        {/* Row 1 - Field 3: Назва об'єднання */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_union"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'union' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'union' ? '#111' : '#555',
@@ -185,7 +181,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, unionId: Number(e.target.value) })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'union' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'union' ? '#333' : '#888',
@@ -201,15 +197,67 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           </select>
         </div>
 
-        {/* Field 4: РСП */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+        {/* Row 1 - Field 4: Корпорація */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
+          <label
+            htmlFor="radio_corp"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 3,
+              fontWeight: filters.filterBy === 'corp' ? 700 : 500,
+              fontSize: 12,
+              color: filters.filterBy === 'corp' ? '#111' : '#555',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+          >
+            <input
+              type="radio"
+              id="radio_corp"
+              name="filterEntityGroup"
+              checked={filters.filterBy === 'corp'}
+              onChange={() => handleSelectRadio('corp')}
+              style={{ margin: 0, cursor: 'pointer' }}
+            />
+            <span>Корпорація</span>
+          </label>
+          <select
+            className="form-control input-sm"
+            id="CorpCode"
+            name="CorpCode"
+            disabled={filters.filterBy !== 'corp'}
+            value={filters.corpCode || ''}
+            onChange={(e) =>
+              onFilterChange({ ...filters, corpCode: e.target.value })
+            }
+            style={{
+              height: 28,
+              borderRadius: 0,
+              backgroundColor: filters.filterBy === 'corp' ? '#fff' : '#f5f5f5',
+              color: filters.filterBy === 'corp' ? '#333' : '#888',
+              cursor: filters.filterBy === 'corp' ? 'default' : 'not-allowed',
+              borderColor: filters.filterBy === 'corp' ? '#66afe9' : '#d5d5d5'
+            }}
+          >
+            {CORPORATIONS_DATA.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Row 2 - Field 5: РСП */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_rsp"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'rsp' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'rsp' ? '#111' : '#555',
@@ -237,7 +285,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, rspId: Number(e.target.value) })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'rsp' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'rsp' ? '#333' : '#888',
@@ -253,15 +301,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           </select>
         </div>
 
-        {/* Field 5: Склад */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+        {/* Row 2 - Field 6: Склад */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_dept"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'dept' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'dept' ? '#111' : '#555',
@@ -289,7 +337,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, deptId: Number(e.target.value) })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'dept' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'dept' ? '#333' : '#888',
@@ -305,15 +353,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           </select>
         </div>
 
-        {/* Field 6: Маршрут */}
-        <div className="col-xs-12 col-sm-6 col-md-4" style={{ paddingLeft: 8, paddingRight: 8, marginBottom: 10 }}>
+        {/* Row 2 - Field 7: Маршрут */}
+        <div className="col-xs-12 col-sm-6 col-md-3" style={{ paddingLeft: 6, paddingRight: 6, marginBottom: 8 }}>
           <label
             htmlFor="radio_route"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 4,
+              marginBottom: 3,
               fontWeight: filters.filterBy === 'route' ? 700 : 500,
               fontSize: 12,
               color: filters.filterBy === 'route' ? '#111' : '#555',
@@ -341,7 +389,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               onFilterChange({ ...filters, routeId: Number(e.target.value) })
             }
             style={{
-              height: 30,
+              height: 28,
               borderRadius: 0,
               backgroundColor: filters.filterBy === 'route' ? '#fff' : '#f5f5f5',
               color: filters.filterBy === 'route' ? '#333' : '#888',

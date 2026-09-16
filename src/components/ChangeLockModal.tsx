@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
-import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
+import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
 
 interface ChangeLockModalProps {
   client: ClientRecord | null;
@@ -44,9 +44,13 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
       const sDate = clientDirectDetail?.startDate || client.scheduledStart || scheduledDetail?.startDate || (client.isScheduled ? activeDetail?.startDate : '') || '';
       const eDate = clientDirectDetail?.endDate || client.scheduledEnd || scheduledDetail?.endDate || (client.isScheduled ? activeDetail?.endDate : '') || '';
 
-      // Direct client reason first, then other lockDetails, then client.reason, fallback to 'Кредитний ліміт'
-      const currentReason = clientDirectDetail?.reason || (client.lockDetails && client.lockDetails.length > 0 ? client.lockDetails.find((d) => d.reason)?.reason : undefined) || client.reason || 'Кредитний ліміт';
-      setReason(currentReason);
+      // Direct client reason if it is a manual reason, otherwise check if client.reason is manual, otherwise default to 'Блокування НКЦ'
+      const candidateReason = clientDirectDetail?.reason || (client.lockDetails && client.lockDetails.length > 0 ? client.lockDetails.find((d) => d.reason)?.reason : undefined) || client.reason;
+      if (candidateReason && (MANUAL_BLOCKING_REASONS as readonly string[]).includes(candidateReason)) {
+        setReason(candidateReason);
+      } else {
+        setReason('Блокування НКЦ');
+      }
 
       const formatToInputDate = (dStr?: string) => {
         if (!dStr) return '';
@@ -89,7 +93,7 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
     onSave(
       client.id,
       isBlocked,
-      isBlocked ? reason || 'Кредитний ліміт' : '',
+      isBlocked ? (reason || 'Блокування НКЦ') : '',
       isBlocked ? startDateTime : undefined,
       isBlocked ? endDateTime : undefined
     );
@@ -359,12 +363,7 @@ export const ChangeLockModal: React.FC<ChangeLockModalProps> = ({
                     >
                       {isBlocked ? (
                         <>
-                          {reason && !UNIFIED_BLOCKING_REASONS.includes(reason as any) && (
-                            <option key={reason} value={reason}>
-                              {reason}
-                            </option>
-                          )}
-                          {UNIFIED_BLOCKING_REASONS.map((r) => (
+                          {MANUAL_BLOCKING_REASONS.map((r) => (
                             <option key={r} value={r}>
                               {r}
                             </option>

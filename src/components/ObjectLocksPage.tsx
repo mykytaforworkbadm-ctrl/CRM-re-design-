@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ObjectLockRecord, EntityType } from '../types';
-import { UNIFIED_BLOCKING_REASONS } from '../data/mockData';
+import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
 
 interface ObjectLocksPageProps {
   objectLocks: ObjectLockRecord[];
@@ -123,7 +123,10 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
 
   const handleOpenEdit = (lock: ObjectLockRecord) => {
     setEditingLock(lock);
-    setEditReason(lock.reason || 'Кредитний ліміт');
+    const defaultManualReason = (lock.reason && (MANUAL_BLOCKING_REASONS as readonly string[]).includes(lock.reason))
+      ? lock.reason
+      : 'Блокування НКЦ';
+    setEditReason(defaultManualReason);
     setEditStartDate(formatToInputDate(lock.startDate));
     setEditEndDate(formatToInputDate(lock.endDate));
   };
@@ -546,12 +549,7 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                       value={editReason}
                       onChange={(e) => setEditReason(e.target.value)}
                     >
-                      {editReason && !UNIFIED_BLOCKING_REASONS.includes(editReason as any) && (
-                        <option key={editReason} value={editReason}>
-                          {editReason}
-                        </option>
-                      )}
-                      {UNIFIED_BLOCKING_REASONS.map((r) => (
+                      {MANUAL_BLOCKING_REASONS.map((r) => (
                         <option key={r} value={r}>
                           {r}
                         </option>
