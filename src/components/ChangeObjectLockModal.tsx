@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EntityRegistryRow, EntityType } from '../types';
 import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
+import { formatToDisplayDateTime } from '../utils/lockTiming';
 
 interface ChangeObjectLockModalProps {
   row: EntityRegistryRow | null;
@@ -46,19 +47,12 @@ export const ChangeObjectLockModal: React.FC<ChangeObjectLockModalProps> = ({
 
   const formatFromInputDate = (dStr?: string) => {
     if (!dStr) return undefined;
-    if (dStr.includes('T')) {
-      const [datePart, timePart] = dStr.split('T');
-      const ymd = datePart.split('-');
-      if (ymd.length === 3) {
-        return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
-      }
-    }
-    return dStr;
+    return formatToDisplayDateTime(dStr);
   };
 
   useEffect(() => {
     if (row) {
-      setIsBlocked(row.isBlocked);
+      setIsBlocked(row.isBlocked || Boolean(row.isScheduled));
       if (row.reason && (MANUAL_BLOCKING_REASONS as readonly string[]).includes(row.reason)) {
         setReason(row.reason);
       } else {

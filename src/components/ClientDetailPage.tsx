@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClientRecord, ObjectLockRecord, QueueOrder, QueueColumnFilters } from '../types';
 import { MANUAL_BLOCKING_REASONS, RSPS_DATA, DEPTS_DATA, ROUTES_DATA } from '../data/mockData';
+import { computeLockTimingState } from '../utils/lockTiming';
 
 interface ClientDetailPageProps {
   client: ClientRecord;
@@ -159,14 +160,20 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
             (o.targetName === client.unionName || (client.unionId && o.targetCode === String(client.unionId)))
         );
         if (found) {
-          isLocked = true;
-          lockReason = found.reason;
-          lockDate = found.lockDate;
+          const timing = computeLockTimingState(found, new Date());
+          if (timing.isActive) {
+            isLocked = true;
+            lockReason = found.reason;
+            lockDate = found.lockDate;
+          }
         } else {
           const detail = client.lockDetails?.find((d) => d.source === 'Об\'єднання');
           if (detail) {
-            isLocked = true;
-            lockReason = detail.reason;
+            const timing = computeLockTimingState(detail, new Date());
+            if (timing.isActive) {
+              isLocked = true;
+              lockReason = detail.reason;
+            }
           }
         }
       }
@@ -179,14 +186,20 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
             (o.targetName === client.rspName || (client.rspId && o.targetCode === String(client.rspId)))
         );
         if (found) {
-          isLocked = true;
-          lockReason = found.reason;
-          lockDate = found.lockDate;
+          const timing = computeLockTimingState(found, new Date());
+          if (timing.isActive) {
+            isLocked = true;
+            lockReason = found.reason;
+            lockDate = found.lockDate;
+          }
         } else {
           const detail = client.lockDetails?.find((d) => d.source === 'РСП');
           if (detail) {
-            isLocked = true;
-            lockReason = detail.reason;
+            const timing = computeLockTimingState(detail, new Date());
+            if (timing.isActive) {
+              isLocked = true;
+              lockReason = detail.reason;
+            }
           }
         }
       }
@@ -199,14 +212,20 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
             (o.targetName === client.routeName || (client.routeId && o.targetCode === String(client.routeId)))
         );
         if (found) {
-          isLocked = true;
-          lockReason = found.reason;
-          lockDate = found.lockDate;
+          const timing = computeLockTimingState(found, new Date());
+          if (timing.isActive) {
+            isLocked = true;
+            lockReason = found.reason;
+            lockDate = found.lockDate;
+          }
         } else {
           const detail = client.lockDetails?.find((d) => d.source === 'Маршрут');
           if (detail) {
-            isLocked = true;
-            lockReason = detail.reason;
+            const timing = computeLockTimingState(detail, new Date());
+            if (timing.isActive) {
+              isLocked = true;
+              lockReason = detail.reason;
+            }
           }
         }
       }
@@ -219,14 +238,20 @@ export const ClientDetailPage: React.FC<ClientDetailPageProps> = ({
             (o.targetName === client.deptName || (client.deptId && o.targetCode === String(client.deptId)))
         );
         if (found) {
-          isLocked = true;
-          lockReason = found.reason;
-          lockDate = found.lockDate;
+          const timing = computeLockTimingState(found, new Date());
+          if (timing.isActive) {
+            isLocked = true;
+            lockReason = found.reason;
+            lockDate = found.lockDate;
+          }
         } else {
           const detail = client.lockDetails?.find((d) => d.source === 'Склад');
           if (detail) {
-            isLocked = true;
-            lockReason = detail.reason;
+            const timing = computeLockTimingState(detail, new Date());
+            if (timing.isActive) {
+              isLocked = true;
+              lockReason = detail.reason;
+            }
           }
         }
       }

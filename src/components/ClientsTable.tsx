@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClientRecord, ColumnFilters } from '../types';
+import { formatClockTooltip, formatToDisplayDateTime } from '../utils/lockTiming';
 
 interface ClientsTableProps {
   clients: ClientRecord[];
@@ -828,7 +829,11 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                           )}
                           {client.isScheduled && (
                             <span
-                              title={`Заплановане блокування на ${client.scheduledTime || '20.08.2026 20:00'}`}
+                              title={formatClockTooltip(
+                                client.isBlocked,
+                                client.scheduledStart || client.lockDetails?.find((d) => d.isScheduled || d.startDate)?.startDate,
+                                client.scheduledEnd || client.lockDetails?.find((d) => d.isScheduled || d.endDate)?.endDate
+                              )}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -892,7 +897,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                               </span>{' '}
                               <span>{detail.reason}</span>
                               {detail.isScheduled && (
-                                <span style={{ color: '#a06000', fontSize: 10 }}> (⏱ {detail.startDate ? detail.startDate.split(' ')[1] : ''})</span>
+                                <span style={{ color: '#a06000', fontSize: 10 }}> (⏱ {formatToDisplayDateTime(detail.startDate).split(' ')[1] || formatToDisplayDateTime(detail.startDate)})</span>
                               )}
                             </div>
                           ))

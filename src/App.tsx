@@ -35,6 +35,7 @@ import {
   EntityType,
   EntityRegistryRow
 } from './types';
+import { computeLockTimingState, recomputeClientLocks, formatToDisplayDateTime } from './utils/lockTiming';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<'UA' | 'RU'>('UA');
@@ -52,8 +53,10 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<AppPage>(getPageFromHash);
 
   // Core records
+  const [allClients, setAllClients] = useState<ClientRecord[]>(INITIAL_CLIENTS);
   const [clients, setClients] = useState<ClientRecord[]>(INITIAL_CLIENTS);
   const [objectLocks, setObjectLocks] = useState<ObjectLockRecord[]>(INITIAL_OBJECT_LOCKS);
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
   const [orders, setOrders] = useState<QueueOrder[]>(QUEUE_ORDERS);
   const [unlockedOrders] = useState<UnlockedQueueOrder[]>(UNLOCKED_QUEUE_ORDERS);
 
@@ -200,9 +203,80 @@ export default function App() {
     }
   }, [massActionResultMessage]);
 
+  // Refs to always access fresh state in scheduler & filter callbacks
+  const objectLocksRef = React.useRef(objectLocks);
+  objectLocksRef.current = objectLocks;
+  const allClientsRef = React.useRef(allClients);
+  allClientsRef.current = allClients;
+  const filtersRef = React.useRef(filters);
+  filtersRef.current = filters;
+
+  // Recalculates locks and client statuses according to current time
+  const recalculateStatusesWith = (
+    locksList: ObjectLockRecord[],
+    clientsList: ClientRecord[],
+    now: Date = new Date()
+  ) => {
+    setCurrentTime(now);
+
+    // 1. Purge expired object locks: "Запис зникає зі списку запланованих і з реєстру блокувань об'єктів"
+    const validLocks = locksList.filter((l) => !computeLockTimingState(l, now).isExpired);
+
+    // 2. Cascade and recalculate client locks from validLocks and client schedules
+    const updatedAllClients = clientsList.map((c) => recomputeClientLocks(c, validLocks, now));
+
+    setObjectLocks(validLocks);
+    setAllClients(updatedAllClients);
+
+    // Apply current search filter
+    const curFilters = filtersRef.current;
+    let filtered = [...updatedAllClients];
+    if (curFilters.filterBy === 'client_code' && curFilters.clientCode.trim()) {
+      const q = curFilters.clientCode.trim().toLowerCase();
+      filtered = filtered.filter((c) => c.clCode.toLowerCase().includes(q));
+    } else if (curFilters.filterBy === 'client_name' && curFilters.clientName.trim()) {
+      const q = curFilters.clientName.trim().toLowerCase();
+      filtered = filtered.filter((c) => c.clName.toLowerCase().includes(q));
+    } else if (curFilters.filterBy === 'corp' && curFilters.corpCode && curFilters.corpCode !== '' && curFilters.corpCode !== 'all') {
+      filtered = filtered.filter(
+        (c) =>
+          c.corpCode === curFilters.corpCode ||
+          c.corpName === curFilters.corpCode ||
+          (c.corpName && c.corpName.includes(curFilters.corpCode))
+      );
+    }
+    setClients(filtered);
+
+    // Sync selectedClient & modalClient
+    setSelectedClient((prev) => {
+      if (!prev) return null;
+      return updatedAllClients.find((c) => c.id === prev.id) || prev;
+    });
+    setModalClient((prev) => {
+      if (!prev) return null;
+      return updatedAllClients.find((c) => c.id === prev.id) || prev;
+    });
+  };
+
+  const recalculateAllStatuses = (now: Date = new Date()) => {
+    recalculateStatusesWith(objectLocksRef.current, allClientsRef.current, now);
+  };
+
+  // Scheduler imitation: recalculate on mount and every minute
+  useEffect(() => {
+    const now = new Date();
+    recalculateStatusesWith(INITIAL_OBJECT_LOCKS, INITIAL_CLIENTS, now);
+
+    const timer = setInterval(() => {
+      recalculateAllStatuses();
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Core filter application logic for clients
   const applyFilterLogic = (currentFilters: FilterState) => {
-    let result = [...INITIAL_CLIENTS];
+    let result = [...allClientsRef.current];
 
     if (currentFilters.filterBy === 'client_code' && currentFilters.clientCode.trim()) {
       const q = currentFilters.clientCode.trim().toLowerCase();
@@ -235,11 +309,10 @@ export default function App() {
     }
   };
 
-  // Handle Main Filter Apply
+  // Handle Main Filter Apply: recalculate on filter apply
   const handleApplyFilter = () => {
-    if (filters.filterBy === 'client_code' || filters.filterBy === 'client_name' || filters.filterBy === 'corp') {
-      applyFilterLogic(filters);
-    }
+    const now = new Date();
+    recalculateStatusesWith(objectLocksRef.current, allClientsRef.current, now);
   };
 
   // Handle Filter Reset
@@ -258,7 +331,7 @@ export default function App() {
       showIgnoredOrders: false
     };
     setFilters(resetState);
-    setClients(INITIAL_CLIENTS);
+    setClients(allClientsRef.current);
   };
 
   const handleToggleLocked = () => {
@@ -297,62 +370,34 @@ export default function App() {
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const isScheduled = isBlocked && Boolean(startDateTime || endDateTime);
 
-    const formatSaveDate = (dStr?: string) => {
-      if (!dStr) return undefined;
-      if (dStr.includes('T')) {
-        const [datePart, timePart] = dStr.split('T');
-        const ymd = datePart.split('-');
-        if (ymd.length === 3) {
-          return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
-        }
+    const savedStartDate = formatToDisplayDateTime(startDateTime) || undefined;
+    const savedEndDate = formatToDisplayDateTime(endDateTime) || undefined;
+
+    const updatedAllClients = allClientsRef.current.map((c) => {
+      if (c.id === clientId) {
+        const otherSourceLocks = (c.lockDetails || []).filter((d) => d.source !== 'Клієнт');
+        const clientLockDetail = isBlocked
+          ? [
+              {
+                source: 'Клієнт' as const,
+                reason: reason || 'Кредитний ліміт',
+                isScheduled,
+                startDate: savedStartDate,
+                endDate: savedEndDate
+              }
+            ]
+          : [];
+        return {
+          ...c,
+          lockDetails: [...clientLockDetail, ...otherSourceLocks],
+          editDate: formattedDate,
+          editUser: 'Дубінін Микита Валерійович'
+        };
       }
-      return dStr;
-    };
-
-    const savedStartDate = formatSaveDate(startDateTime);
-    const savedEndDate = formatSaveDate(endDateTime);
-
-    setClients((prev) => {
-      return prev.map((c) => {
-        if (c.id === clientId) {
-          // Preserve other source locks if any (e.g. from Union, Route, RSP), replace Client source lock
-          const otherSourceLocks = (c.lockDetails || []).filter((d) => d.source !== 'Клієнт');
-          const clientLockDetail = isBlocked
-            ? [
-                {
-                  source: 'Клієнт' as const,
-                  reason: reason || 'Кредитний ліміт',
-                  isScheduled,
-                  startDate: savedStartDate,
-                  endDate: savedEndDate
-                }
-              ]
-            : [];
-          const newLockDetails = [...clientLockDetail, ...otherSourceLocks];
-
-          const updatedClient: ClientRecord = {
-            ...c,
-            isBlocked: isBlocked || otherSourceLocks.length > 0,
-            isScheduled: isScheduled || otherSourceLocks.some((d) => d.isScheduled),
-            scheduledStart: savedStartDate || (isBlocked ? undefined : c.scheduledStart),
-            scheduledEnd: savedEndDate || (isBlocked ? undefined : c.scheduledEnd),
-            scheduledTime: savedStartDate ? savedStartDate.slice(0, 11) : undefined,
-            reason: isBlocked ? (reason || 'Кредитний ліміт') : (otherSourceLocks[0]?.reason || ''),
-            lockDetails: newLockDetails,
-            editDate: formattedDate,
-            editUser: 'Дубінін Микита Валерійович'
-          };
-          if (modalClient && modalClient.id === clientId) {
-            setModalClient(updatedClient);
-          }
-          if (selectedClient && selectedClient.id === clientId) {
-            setSelectedClient(updatedClient);
-          }
-          return updatedClient;
-        }
-        return c;
-      });
+      return c;
     });
+
+    recalculateStatusesWith(objectLocksRef.current, updatedAllClients, now);
   };
 
   // Save single object lock change (Union, RSP, Warehouse, Route)
@@ -369,115 +414,48 @@ export default function App() {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     
-    const formatSaveDate = (dStr?: string) => {
-      if (!dStr) return undefined;
-      if (dStr.includes('T')) {
-        const [datePart, timePart] = dStr.split('T');
-        const ymd = datePart.split('-');
-        if (ymd.length === 3) {
-          return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
-        }
-      }
-      return dStr;
-    };
-
-    const savedStartDate = formatSaveDate(startDate);
-    const savedEndDate = formatSaveDate(endDate);
+    const savedStartDate = formatToDisplayDateTime(startDate) || undefined;
+    const savedEndDate = formatToDisplayDateTime(endDate) || undefined;
     const isScheduled = isBlocked && Boolean(savedStartDate || savedEndDate);
 
+    let nextLocks: ObjectLockRecord[];
     if (isBlocked) {
-      setObjectLocks((prev) => {
-        const existingIndex = prev.findIndex(
-          (l) => l.targetType === targetType && (l.targetCode === targetCode || l.targetName === targetName)
-        );
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            reason: reason || 'Блокування НКЦ',
-            lockDate: formattedDate,
-            lockedBy: 'Дубінін Микита Валерійович',
-            startDate: savedStartDate,
-            endDate: savedEndDate,
-            isScheduled
-          };
-          return updated;
-        } else {
-          const newLock: ObjectLockRecord = {
-            id: `lock-${Date.now()}`,
-            targetType,
-            targetCode,
-            targetName,
-            reason: reason || 'Блокування НКЦ',
-            lockDate: formattedDate,
-            lockedBy: 'Дубінін Микита Валерійович',
-            startDate: savedStartDate,
-            endDate: savedEndDate,
-            isScheduled
-          };
-          return [newLock, ...prev];
-        }
-      });
-
-      // Cascade to clients belonging to this entity
-      setClients((prev) =>
-        prev.map((c) => {
-          let matches = false;
-          if (targetType === 'Об\'єднання' && (String(c.unionId) === targetCode || c.unionName === targetName)) matches = true;
-          if (targetType === 'РСП' && (String(c.rspId) === targetCode || c.rspName === targetName)) matches = true;
-          if (targetType === 'Склад' && (String(c.deptId) === targetCode || c.deptName === targetName)) matches = true;
-          if (targetType === 'Маршрут' && (String(c.routeId) === targetCode || c.routeName === targetName)) matches = true;
-
-          if (matches) {
-            const existingDetails = c.lockDetails || [];
-            const filtered = existingDetails.filter((ld) => ld.source !== targetType);
-            const newDetail = {
-              source: targetType,
-              reason: reason || 'Блокування НКЦ',
-              startDate: savedStartDate,
-              endDate: savedEndDate,
-              isScheduled
-            };
-            return {
-              ...c,
-              isBlocked: true,
-              reason: reason || 'Блокування НКЦ',
-              lockDetails: [newDetail, ...filtered]
-            };
-          }
-          return c;
-        })
+      const existingIndex = objectLocksRef.current.findIndex(
+        (l) => l.targetType === targetType && (l.targetCode === targetCode || l.targetName === targetName)
       );
+      if (existingIndex >= 0) {
+        nextLocks = [...objectLocksRef.current];
+        nextLocks[existingIndex] = {
+          ...nextLocks[existingIndex],
+          reason: reason || 'Блокування НКЦ',
+          lockDate: formattedDate,
+          lockedBy: 'Дубінін Микита Валерійович',
+          startDate: savedStartDate,
+          endDate: savedEndDate,
+          isScheduled
+        };
+      } else {
+        const newLock: ObjectLockRecord = {
+          id: `lock-${Date.now()}`,
+          targetType,
+          targetCode,
+          targetName,
+          reason: reason || 'Блокування НКЦ',
+          lockDate: formattedDate,
+          lockedBy: 'Дубінін Микита Валерійович',
+          startDate: savedStartDate,
+          endDate: savedEndDate,
+          isScheduled
+        };
+        nextLocks = [newLock, ...objectLocksRef.current];
+      }
     } else {
-      // Remove object lock
-      setObjectLocks((prev) =>
-        prev.filter(
-          (l) => !(l.targetType === targetType && (l.targetCode === targetCode || l.targetName === targetName))
-        )
-      );
-
-      // Cascade to clients
-      setClients((prev) =>
-        prev.map((c) => {
-          let matches = false;
-          if (targetType === 'Об\'єднання' && (String(c.unionId) === targetCode || c.unionName === targetName)) matches = true;
-          if (targetType === 'РСП' && (String(c.rspId) === targetCode || c.rspName === targetName)) matches = true;
-          if (targetType === 'Склад' && (String(c.deptId) === targetCode || c.deptName === targetName)) matches = true;
-          if (targetType === 'Маршрут' && (String(c.routeId) === targetCode || c.routeName === targetName)) matches = true;
-
-          if (matches && c.lockDetails) {
-            const remainingDetails = c.lockDetails.filter((ld) => ld.source !== targetType);
-            return {
-              ...c,
-              isBlocked: remainingDetails.length > 0,
-              reason: remainingDetails.length > 0 ? remainingDetails[0].reason : '',
-              lockDetails: remainingDetails
-            };
-          }
-          return c;
-        })
+      nextLocks = objectLocksRef.current.filter(
+        (l) => !(l.targetType === targetType && (l.targetCode === targetCode || l.targetName === targetName))
       );
     }
+
+    recalculateStatusesWith(nextLocks, allClientsRef.current, now);
   };
 
   // Navigate to Buffer page from client row or modal
@@ -564,7 +542,10 @@ export default function App() {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const formattedDate = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const isLocking = action === 'lock';
-    const isScheduled = isLocking && Boolean(startDateTime || endDateTime);
+
+    const savedStartDate = formatToDisplayDateTime(startDateTime) || undefined;
+    const savedEndDate = formatToDisplayDateTime(endDateTime) || undefined;
+    const isScheduled = isLocking && Boolean(savedStartDate || savedEndDate);
 
     if (isLocking) {
       const lockedCount = selectedIds.length;
@@ -579,9 +560,8 @@ export default function App() {
       let notLockedCount = 0;
 
       if (entityType === 'clients') {
-        const idSet = new Set(selectedIds.map(Number));
         selectedIds.forEach((id) => {
-          const c = clients.find((item) => item.id === Number(id));
+          const c = allClientsRef.current.find((item) => item.id === Number(id));
           if (c && (c.isBlocked || c.isScheduled)) {
             activeUnlockedCount++;
           } else {
@@ -591,7 +571,7 @@ export default function App() {
       } else {
         const targetType = entityType === 'routes' ? 'Маршрут' : entityType === 'rsps' ? 'РСП' : 'Склад';
         selectedIds.forEach((id) => {
-          const l = objectLocks.find((item) => item.targetType === targetType && item.targetCode === String(id));
+          const l = objectLocksRef.current.find((item) => item.targetType === targetType && item.targetCode === String(id));
           if (l) {
             activeUnlockedCount++;
           } else {
@@ -609,41 +589,40 @@ export default function App() {
 
     if (entityType === 'clients') {
       const idSet = new Set(selectedIds.map(Number));
-      setClients((prev) =>
-        prev.map((c) => {
-          if (idSet.has(c.id)) {
-            const newLockDetails = isLocking
-              ? [
-                  {
-                    source: 'Клієнт' as const,
-                    reason: reason || 'Блокування НКЦ',
-                    isScheduled,
-                    startDate: startDateTime,
-                    endDate: endDateTime
-                  }
-                ]
-              : [];
-            return {
-              ...c,
-              isBlocked: isLocking,
-              isScheduled,
-              scheduledTime: startDateTime ? startDateTime.replace('T', ' ') : undefined,
-              scheduledStart: startDateTime ? startDateTime.replace('T', ' ') : undefined,
-              scheduledEnd: endDateTime ? endDateTime.replace('T', ' ') : undefined,
-              reason: isLocking ? reason : '',
-              lockDetails: newLockDetails,
-              editDate: formattedDate,
-              editUser: 'Дубінін Микита Валерійович'
-            };
-          }
-          return c;
-        })
-      );
+
+      const updatedAllClients = allClientsRef.current.map((c) => {
+        if (idSet.has(c.id)) {
+          const otherSourceLocks = (c.lockDetails || []).filter((d) => d.source !== 'Клієнт');
+          const newLockDetails = isLocking
+            ? [
+                {
+                  source: 'Клієнт' as const,
+                  reason: reason || 'Блокування НКЦ',
+                  isScheduled,
+                  startDate: savedStartDate,
+                  endDate: savedEndDate
+                },
+                ...otherSourceLocks
+              ]
+            : otherSourceLocks;
+
+          return {
+            ...c,
+            lockDetails: newLockDetails,
+            editDate: formattedDate,
+            editUser: 'Дубінін Микита Валерійович'
+          };
+        }
+        return c;
+      });
+
+      recalculateStatusesWith(objectLocksRef.current, updatedAllClients, now);
     } else {
       let targetType: EntityType = 'Маршрут';
       if (entityType === 'rsps') targetType = 'РСП';
       if (entityType === 'depts') targetType = 'Склад';
 
+      let nextLocks = [...objectLocksRef.current];
       if (isLocking) {
         const newLocks: ObjectLockRecord[] = selectedIds.map((id) => {
           let name = String(id);
@@ -666,75 +645,24 @@ export default function App() {
             reason: reason || 'Блокування НКЦ',
             lockDate: formattedDate,
             lockedBy: 'Дубінін Микита Валерійович',
-            startDate: startDateTime,
-            endDate: endDateTime,
+            startDate: savedStartDate,
+            endDate: savedEndDate,
             isScheduled
           };
         });
 
-        setObjectLocks((prev) => {
-          const filtered = prev.filter(
-            (l) => !(l.targetType === targetType && selectedIds.map(String).includes(l.targetCode))
-          );
-          return [...newLocks, ...filtered];
-        });
-
-        // Cascade to clients
-        setClients((prev) =>
-          prev.map((c) => {
-            let matches = false;
-            if (entityType === 'routes' && selectedIds.map(Number).includes(c.routeId)) matches = true;
-            if (entityType === 'rsps' && selectedIds.map(Number).includes(c.rspId)) matches = true;
-            if (entityType === 'depts' && selectedIds.map(Number).includes(c.deptId)) matches = true;
-
-            if (matches) {
-              const existingDetails = c.lockDetails || [];
-              const filtered = existingDetails.filter((ld) => ld.source !== targetType);
-              const newDetail = {
-                source: targetType,
-                reason: reason || 'Блокування НКЦ',
-                startDate: startDateTime,
-                endDate: endDateTime,
-                isScheduled
-              };
-              return {
-                ...c,
-                isBlocked: true,
-                reason: reason || 'Блокування НКЦ',
-                lockDetails: [newDetail, ...filtered]
-              };
-            }
-            return c;
-          })
+        const filtered = nextLocks.filter(
+          (l) => !(l.targetType === targetType && selectedIds.map(String).includes(l.targetCode))
         );
+        nextLocks = [...newLocks, ...filtered];
       } else {
         // Unlock mass objects
-        setObjectLocks((prev) =>
-          prev.filter(
-            (l) => !(l.targetType === targetType && selectedIds.map(String).includes(l.targetCode))
-          )
-        );
-
-        setClients((prev) =>
-          prev.map((c) => {
-            let matches = false;
-            if (entityType === 'routes' && selectedIds.map(Number).includes(c.routeId)) matches = true;
-            if (entityType === 'rsps' && selectedIds.map(Number).includes(c.rspId)) matches = true;
-            if (entityType === 'depts' && selectedIds.map(Number).includes(c.deptId)) matches = true;
-
-            if (matches && c.lockDetails) {
-              const remainingDetails = c.lockDetails.filter((ld) => ld.source !== targetType);
-              return {
-                ...c,
-                isBlocked: remainingDetails.length > 0,
-                reason: remainingDetails.length > 0 ? remainingDetails[0].reason : '',
-                lockDetails: remainingDetails
-              };
-            }
-            return c;
-          })
+        nextLocks = nextLocks.filter(
+          (l) => !(l.targetType === targetType && selectedIds.map(String).includes(l.targetCode))
         );
       }
+
+      recalculateStatusesWith(nextLocks, allClientsRef.current, now);
     }
   };
 
@@ -750,6 +678,7 @@ export default function App() {
               l.targetType === 'Об\'єднання' &&
               (l.targetCode === String(u.value) || l.targetName.toLowerCase() === u.label.toLowerCase())
           );
+          const timing = lock ? computeLockTimingState(lock, currentTime) : null;
           const relatedClients = clients.filter(
             (c) => c.unionId === u.value || c.unionName === u.label
           );
@@ -771,10 +700,10 @@ export default function App() {
             type: 'Об\'єднання',
             code: String(u.value),
             name: u.label,
-            isBlocked: Boolean(lock),
-            isScheduled: lock?.isScheduled,
-            startDate: lock?.startDate,
-            endDate: lock?.endDate,
+            isBlocked: timing ? timing.isBlocked : false,
+            isScheduled: timing ? timing.isScheduled : false,
+            startDate: lock?.startDate ? formatToDisplayDateTime(lock.startDate) : undefined,
+            endDate: lock?.endDate ? formatToDisplayDateTime(lock.endDate) : undefined,
             editDate: lock ? lock.lockDate : '',
             editUser: lock ? lock.lockedBy : '',
             reason: lock ? lock.reason : '',
@@ -798,6 +727,7 @@ export default function App() {
               l.targetType === 'РСП' &&
               (l.targetCode === String(r.value) || l.targetName.toLowerCase() === r.label.toLowerCase())
           );
+          const timing = lock ? computeLockTimingState(lock, currentTime) : null;
           const relatedClients = clients.filter(
             (c) => c.rspId === r.value || c.rspName === r.label
           );
@@ -819,10 +749,10 @@ export default function App() {
             type: 'РСП',
             code: String(r.value),
             name: r.label,
-            isBlocked: Boolean(lock),
-            isScheduled: lock?.isScheduled,
-            startDate: lock?.startDate,
-            endDate: lock?.endDate,
+            isBlocked: timing ? timing.isBlocked : false,
+            isScheduled: timing ? timing.isScheduled : false,
+            startDate: lock?.startDate ? formatToDisplayDateTime(lock.startDate) : undefined,
+            endDate: lock?.endDate ? formatToDisplayDateTime(lock.endDate) : undefined,
             editDate: lock ? lock.lockDate : '',
             editUser: lock ? lock.lockedBy : '',
             reason: lock ? lock.reason : '',
@@ -846,6 +776,7 @@ export default function App() {
               l.targetType === 'Склад' &&
               (l.targetCode === String(d.value) || l.targetName.toLowerCase() === d.label.toLowerCase())
           );
+          const timing = lock ? computeLockTimingState(lock, currentTime) : null;
           const relatedClients = clients.filter(
             (c) => c.deptId === d.value || c.deptName === d.label
           );
@@ -867,10 +798,10 @@ export default function App() {
             type: 'Склад',
             code: String(d.value),
             name: d.label,
-            isBlocked: Boolean(lock),
-            isScheduled: lock?.isScheduled,
-            startDate: lock?.startDate,
-            endDate: lock?.endDate,
+            isBlocked: timing ? timing.isBlocked : false,
+            isScheduled: timing ? timing.isScheduled : false,
+            startDate: lock?.startDate ? formatToDisplayDateTime(lock.startDate) : undefined,
+            endDate: lock?.endDate ? formatToDisplayDateTime(lock.endDate) : undefined,
             editDate: lock ? lock.lockDate : '',
             editUser: lock ? lock.lockedBy : '',
             reason: lock ? lock.reason : '',
@@ -894,6 +825,7 @@ export default function App() {
               l.targetType === 'Маршрут' &&
               (l.targetCode === String(rt.value) || l.targetName.toLowerCase() === rt.label.toLowerCase())
           );
+          const timing = lock ? computeLockTimingState(lock, currentTime) : null;
           const relatedClients = clients.filter(
             (c) => c.routeId === rt.value || c.routeName === rt.label
           );
@@ -915,10 +847,10 @@ export default function App() {
             type: 'Маршрут',
             code: String(rt.value),
             name: rt.label,
-            isBlocked: Boolean(lock),
-            isScheduled: lock?.isScheduled,
-            startDate: lock?.startDate,
-            endDate: lock?.endDate,
+            isBlocked: timing ? timing.isBlocked : false,
+            isScheduled: timing ? timing.isScheduled : false,
+            startDate: lock?.startDate ? formatToDisplayDateTime(lock.startDate) : undefined,
+            endDate: lock?.endDate ? formatToDisplayDateTime(lock.endDate) : undefined,
             editDate: lock ? lock.lockDate : '',
             editUser: lock ? lock.lockedBy : '',
             reason: lock ? lock.reason : '',
@@ -933,7 +865,7 @@ export default function App() {
     }
 
     return [];
-  }, [filters.filterBy, filters.unionId, filters.rspId, filters.deptId, filters.routeId, objectLocks, clients]);
+  }, [filters.filterBy, filters.unionId, filters.rspId, filters.deptId, filters.routeId, objectLocks, clients, currentTime]);
 
   return (
     <div className="crm-app" style={{ minHeight: '100vh', backgroundColor: '#fff' }}>

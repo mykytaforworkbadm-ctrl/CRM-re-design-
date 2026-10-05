@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ObjectLockRecord, EntityType, ClientRecord } from '../types';
 import { MANUAL_BLOCKING_REASONS } from '../data/mockData';
+import { computeLockTimingState, formatToDisplayDateTime, formatClockTooltip } from '../utils/lockTiming';
 
 interface ObjectLocksPageProps {
   objectLocks: ObjectLockRecord[];
@@ -56,11 +57,15 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
   });
 
   const filteredLocks = objectLocks.filter((l) => {
+    const timing = computeLockTimingState(l, new Date());
+    // Rule: період завершився: запис зникає зі списку запланованих і з реєстру блокувань об'єктів
+    if (timing.isExpired) return false;
+
     if (filterType !== 'all' && l.targetType !== filterType) return false;
     
-    // Status Filter (Requirement 2.8)
-    if (statusFilter === 'active' && l.isScheduled) return false;
-    if (statusFilter === 'scheduled' && !l.isScheduled) return false;
+    // Status Filter (Requirement 2.8 & Ф1а)
+    if (statusFilter === 'active' && !timing.isActive) return false;
+    if (statusFilter === 'scheduled' && !timing.isFuture) return false;
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -75,7 +80,7 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
     if (columnFilters.targetType && !l.targetType.toLowerCase().includes(columnFilters.targetType.toLowerCase())) return false;
     if (columnFilters.targetName && !(l.targetName + ' ' + l.targetCode).toLowerCase().includes(columnFilters.targetName.toLowerCase())) return false;
     if (columnFilters.status) {
-      const lockStatusText = l.isScheduled ? 'заплановане' : 'активне';
+      const lockStatusText = timing.isFuture ? 'заплановане' : 'активне';
       if (!lockStatusText.includes(columnFilters.status.toLowerCase())) return false;
     }
     if (columnFilters.reason && !l.reason.toLowerCase().includes(columnFilters.reason.toLowerCase())) return false;
@@ -88,17 +93,20 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
   // Export to Excel / CSV (Requirement 2.8)
   const handleExportCsv = () => {
     const headers = ['Тип об\'єкта', 'Код', 'Назва', 'Статус', 'Причина', 'Дата блокування', 'Хто встановив', 'Дата початку', 'Дата закінчення'];
-    const rows = filteredLocks.map((l) => [
-      l.targetType,
-      l.targetCode || '',
-      `"${(l.targetName || '').replace(/"/g, '""')}"`,
-      l.isScheduled ? 'Заплановане' : 'Активне',
-      `"${(l.reason || '').replace(/"/g, '""')}"`,
-      l.lockDate || '',
-      `"${(l.lockedBy || '').replace(/"/g, '""')}"`,
-      l.startDate || '',
-      l.endDate || ''
-    ]);
+    const rows = filteredLocks.map((l) => {
+      const timing = computeLockTimingState(l, new Date());
+      return [
+        l.targetType,
+        l.targetCode || '',
+        `"${(l.targetName || '').replace(/"/g, '""')}"`,
+        timing.isFuture ? 'Заплановане' : 'Активне',
+        `"${(l.reason || '').replace(/"/g, '""')}"`,
+        l.lockDate || '',
+        `"${(l.lockedBy || '').replace(/"/g, '""')}"`,
+        formatToDisplayDateTime(l.startDate) || '',
+        formatToDisplayDateTime(l.endDate) || ''
+      ];
+    });
 
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -129,14 +137,7 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
 
   const formatFromInputDate = (dStr?: string) => {
     if (!dStr) return undefined;
-    if (dStr.includes('T')) {
-      const [datePart, timePart] = dStr.split('T');
-      const ymd = datePart.split('-');
-      if (ymd.length === 3) {
-        return `${ymd[2]}.${ymd[1]}.${ymd[0]} ${timePart.slice(0, 5)}`;
-      }
-    }
-    return dStr;
+    return formatToDisplayDateTime(dStr);
   };
 
   const handleOpenEdit = (lock: ObjectLockRecord) => {
@@ -424,103 +425,109 @@ export const ObjectLocksPage: React.FC<ObjectLocksPageProps> = ({
                 </thead>
 
                 <tbody>
-                  {filteredLocks.map((lock) => (
-                    <tr key={lock.id} className="jqgrow ui-row-ltr">
-                      <td>
-                        <span
-                          style={{
-                            fontWeight: 'bold',
-                            color:
-                              lock.targetType === 'Маршрут'
-                                ? '#337ab7'
-                                : lock.targetType === 'РСП'
-                                ? '#269abc'
-                                : lock.targetType === 'Склад'
-                                ? '#8a6d3b'
-                                : '#a94442'
-                          }}
-                        >
-                          {lock.targetType}
-                        </span>
-                      </td>
-                      <td>
-                        <strong>{lock.targetName}</strong>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {lock.isScheduled ? (
+                  {filteredLocks.map((lock) => {
+                    const timing = computeLockTimingState(lock, new Date());
+                    return (
+                      <tr key={lock.id} className="jqgrow ui-row-ltr">
+                        <td>
                           <span
-                            className="label"
                             style={{
-                              backgroundColor: '#fff3cd',
-                              color: '#856404',
-                              border: '1px solid #ffeeba',
-                              padding: '3px 6px',
-                              borderRadius: '3px',
-                              fontSize: '11px',
-                              fontWeight: 'bold'
+                              fontWeight: 'bold',
+                              color:
+                                lock.targetType === 'Маршрут'
+                                  ? '#337ab7'
+                                  : lock.targetType === 'РСП'
+                                  ? '#269abc'
+                                  : lock.targetType === 'Склад'
+                                  ? '#8a6d3b'
+                                  : '#a94442'
                             }}
                           >
-                            Заплановане
+                            {lock.targetType}
                           </span>
-                        ) : (
-                          <span
-                            className="label"
-                            style={{
-                              backgroundColor: '#f2dede',
-                              color: '#a94442',
-                              border: '1px solid #ebccd1',
-                              padding: '3px 6px',
-                              borderRadius: '3px',
-                              fontSize: '11px',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            Активне
-                          </span>
-                        )}
-                      </td>
-                      <td>{lock.reason}</td>
-                      <td>{lock.lockDate}</td>
-                      <td>{lock.lockedBy}</td>
-                      <td>
-                        {lock.isScheduled ? (
-                          <span style={{ color: '#a06000', fontWeight: 'bold' }}>
-                            ⏱ {lock.startDate || 'майбутній час'} {lock.endDate ? `— ${lock.endDate}` : ''}
-                          </span>
-                        ) : lock.startDate || lock.endDate ? (
-                          <span>
-                            {lock.startDate || '—'} — {lock.endDate || 'безстроково'}
-                          </span>
-                        ) : (
-                          <span style={{ color: '#666' }}>Діє постійно</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', gap: 4 }}>
-                          {lock.isScheduled && (
+                        </td>
+                        <td>
+                          <strong>{lock.targetName}</strong>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {timing.isFuture ? (
+                            <span
+                              className="label"
+                              style={{
+                                backgroundColor: '#fff3cd',
+                                color: '#856404',
+                                border: '1px solid #ffeeba',
+                                padding: '3px 6px',
+                                borderRadius: '3px',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Заплановане
+                            </span>
+                          ) : (
+                            <span
+                              className="label"
+                              style={{
+                                backgroundColor: '#f2dede',
+                                color: '#a94442',
+                                border: '1px solid #ebccd1',
+                                padding: '3px 6px',
+                                borderRadius: '3px',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Активне
+                            </span>
+                          )}
+                        </td>
+                        <td>{lock.reason}</td>
+                        <td>{lock.lockDate}</td>
+                        <td>{lock.lockedBy}</td>
+                        <td>
+                          {timing.isFuture ? (
+                            <span
+                              style={{ color: '#a06000', fontWeight: 'bold' }}
+                              title={formatClockTooltip(false, lock.startDate, lock.endDate)}
+                            >
+                              ⏱ {formatToDisplayDateTime(lock.startDate) || 'майбутній час'} {lock.endDate ? `— ${formatToDisplayDateTime(lock.endDate)}` : ''}
+                            </span>
+                          ) : lock.startDate || lock.endDate ? (
+                            <span title={lock.isScheduled ? formatClockTooltip(true, lock.startDate, lock.endDate) : undefined}>
+                              {lock.isScheduled ? '⏱ ' : ''}{formatToDisplayDateTime(lock.startDate) || '—'} — {formatToDisplayDateTime(lock.endDate) || 'безстроково'}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#666' }}>Діє постійно</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', gap: 4 }}>
+                            {lock.isScheduled && (
+                              <button
+                                type="button"
+                                className="btn btn-warning btn-xs"
+                                style={{ padding: '2px 6px', fontSize: 11 }}
+                                onClick={() => handleOpenEdit(lock)}
+                                title="Редагувати розклад або причину"
+                              >
+                                Редагувати
+                              </button>
+                            )}
                             <button
                               type="button"
-                              className="btn btn-warning btn-xs"
+                              className="btn btn-danger btn-xs"
                               style={{ padding: '2px 6px', fontSize: 11 }}
-                              onClick={() => handleOpenEdit(lock)}
-                              title="Редагувати розклад або причину"
+                              onClick={() => onRemoveLock(lock.id)}
+                              title={timing.isFuture ? 'Скасувати заплановане блокування' : 'Зняти активне блокування'}
                             >
-                              Редагувати
+                              {timing.isFuture ? 'Скасувати' : 'Зняти блок'}
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-xs"
-                            style={{ padding: '2px 6px', fontSize: 11 }}
-                            onClick={() => onRemoveLock(lock.id)}
-                            title={lock.isScheduled ? 'Скасувати заплановане блокування' : 'Зняти активне блокування'}
-                          >
-                            {lock.isScheduled ? 'Скасувати' : 'Зняти блок'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredLocks.length === 0 && (
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '20px', color: '#888' }}>

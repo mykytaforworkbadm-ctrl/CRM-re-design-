@@ -196,11 +196,11 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     corpName: 'К_АГРОПРОМИСЛОВЕ НАУКОВО - ВИРОБНИЧЕ ПІДПРИЄМСТВО "ВІЗИТ"',
     type: 'corp-member',
     typeLabel: 'Член корп.',
-    isBlocked: true,
+    isBlocked: false,
     isScheduled: true,
-    scheduledTime: '18.08 14:00',
-    scheduledStart: '18.08.2026 14:00',
-    scheduledEnd: '18.08.2026 20:00',
+    scheduledTime: '18.10.2026 14:00',
+    scheduledStart: '18.10.2026 14:00',
+    scheduledEnd: '18.10.2026 20:00',
     scheduledObject: 'Клієнт',
     clCode: '51305',
     clName: 'АДАМПІЛЬСЬКИЙ КОМБІКОРМОВИЙ ЗАВОД, ТОВ',
@@ -208,10 +208,10 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     mngName: 'Хамардюк Ігор Миколайович',
     editDate: '18.08.2026 09:21:36',
     editUser: 'EDIQ',
-    reason: 'Кредитний ліміт',
-    reasonId: 30,
+    reason: 'Блокування НКЦ',
+    reasonId: 31,
     lockDetails: [
-      { source: 'Клієнт', reason: 'Кредитний ліміт', startDate: '18.08.2026 14:00', endDate: '18.08.2026 20:00', isScheduled: true }
+      { source: 'Клієнт', reason: 'Блокування НКЦ', startDate: '18.10.2026 14:00', endDate: '18.10.2026 20:00', isScheduled: true }
     ],
     countUrgent: '',
     countOrders: '',
@@ -664,9 +664,9 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     typeLabel: 'Член корп.',
     isBlocked: true,
     isScheduled: true,
-    scheduledTime: '19.08 08:00',
-    scheduledStart: '19.08.2026 08:00',
-    scheduledEnd: '19.08.2026 22:00',
+    scheduledTime: '01.10 09:00',
+    scheduledStart: '01.10.2026 09:00',
+    scheduledEnd: '20.10.2026 20:00',
     scheduledObject: 'РСП',
     clCode: '63001',
     clName: 'АПТЕКА ДОБРОГО ДНЯ (ФАРМАСТОР №1), ТОВ',
@@ -679,7 +679,7 @@ export const INITIAL_CLIENTS: ClientRecord[] = [
     reasonId: 31,
     lockDetails: [
       { source: 'Об\'єднання', reason: 'Блокування НКЦ' },
-      { source: 'РСП', reason: 'Київ Темпус: Планова інвентаризація', startDate: '19.08.2026 08:00', endDate: '19.08.2026 22:00', isScheduled: true }
+      { source: 'РСП', reason: 'Київ Темпус: Планова інвентаризація', startDate: '01.10.2026 09:00', endDate: '20.10.2026 20:00', isScheduled: true }
     ],
     countUrgent: 3,
     countOrders: 18,
@@ -775,10 +775,10 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     targetCode: '1671075',
     targetName: 'Київ Темпус',
     reason: 'Планова інвентаризація',
-    lockDate: '18.08.2026 09:00:00',
+    lockDate: '01.10.2026 09:00:00',
     lockedBy: 'Дубінін Микита Валерійович',
-    startDate: '18.08.2026 09:00',
-    endDate: '19.08.2026 20:00',
+    startDate: '01.10.2026 09:00',
+    endDate: '20.10.2026 20:00',
     isScheduled: true
   },
   {
@@ -787,10 +787,10 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     targetCode: '1299',
     targetName: 'BT_KI_01',
     reason: 'Пробне блокування',
-    lockDate: '18.08.2026 08:30:00',
+    lockDate: '04.10.2026 08:30:00',
     lockedBy: 'EDIQ',
-    startDate: '20.08.2026 00:00',
-    endDate: '21.08.2026 00:00',
+    startDate: '20.10.2026 00:00',
+    endDate: '25.10.2026 00:00',
     isScheduled: true
   },
   {
@@ -811,8 +811,8 @@ export const INITIAL_OBJECT_LOCKS: ObjectLockRecord[] = [
     reason: 'Технічне обслуговування',
     lockDate: '18.08.2026 10:00:00',
     lockedBy: 'Дубінін Микита Валерійович',
-    startDate: '01.09.2026 08:00',
-    endDate: '05.09.2026 20:00',
+    startDate: '29.09.2026 08:00',
+    endDate: '30.09.2026 20:00',
     isScheduled: true
   }
 ];

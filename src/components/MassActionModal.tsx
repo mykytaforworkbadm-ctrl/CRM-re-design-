@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClientRecord, ObjectLockRecord } from '../types';
 import { UNIONS_DATA, DEPTS_DATA, RSPS_DATA, ROUTES_DATA, CORPORATIONS_DATA, MANUAL_BLOCKING_REASONS } from '../data/mockData';
+import { computeLockTimingState, formatToDisplayDateTime } from '../utils/lockTiming';
 
 interface MassActionModalProps {
   isOpen: boolean;
@@ -293,13 +294,17 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                 }];
 
             for (const d of details) {
+              const timing = computeLockTimingState(d, new Date());
+              if (timing.isExpired) continue;
               const dStart = d.startDate || (d.isScheduled ? client.scheduledStart : undefined);
               const dEnd = d.endDate || (d.isScheduled ? client.scheduledEnd : undefined);
               if (checkPeriodsOverlap(startDateTime, endDateTime, dStart, dEnd)) {
                 hasConflict = true;
                 conflictReason = d.reason || client.reason || 'Блокування';
-                conflictPeriod = (dStart || dEnd)
-                  ? `з ${dStart || 'негайно'} по ${dEnd || 'безстроково'}`
+                const formattedDStart = formatToDisplayDateTime(dStart);
+                const formattedDEnd = formatToDisplayDateTime(dEnd);
+                conflictPeriod = (formattedDStart || formattedDEnd)
+                  ? `з ${formattedDStart || 'негайно'} по ${formattedDEnd || 'безстроково'}`
                   : 'Діє постійно';
                 break;
               }
@@ -347,9 +352,12 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
           }
 
           if (existingLock) {
-            if (checkPeriodsOverlap(startDateTime, endDateTime, existingLock.startDate, existingLock.endDate)) {
-              const periodText = (existingLock.startDate || existingLock.endDate)
-                ? `з ${existingLock.startDate || 'негайно'} по ${existingLock.endDate || 'безстроково'}`
+            const timing = computeLockTimingState(existingLock, new Date());
+            if (!timing.isExpired && checkPeriodsOverlap(startDateTime, endDateTime, existingLock.startDate, existingLock.endDate)) {
+              const formattedStart = formatToDisplayDateTime(existingLock.startDate);
+              const formattedEnd = formatToDisplayDateTime(existingLock.endDate);
+              const periodText = (formattedStart || formattedEnd)
+                ? `з ${formattedStart || 'негайно'} по ${formattedEnd || 'безстроково'}`
                 : 'Діє постійно';
               conflicts.push({
                 id,
@@ -1028,7 +1036,7 @@ export const MassActionModal: React.FC<MassActionModalProps> = ({
                       <span style={{ width: 90, color: '#666', fontWeight: 'bold' }}>Період:</span>
                       <span style={{ color: '#333' }}>
                         {startDateTime || endDateTime ? (
-                          `з ${startDateTime ? startDateTime.replace('T', ' ') : 'негайно'} по ${endDateTime ? endDateTime.replace('T', ' ') : 'безстроково'}`
+                          `з ${startDateTime ? formatToDisplayDateTime(startDateTime) : 'негайно'} по ${endDateTime ? formatToDisplayDateTime(endDateTime) : 'безстроково'}`
                         ) : (
                           'Негайно і безстроково'
                         )}

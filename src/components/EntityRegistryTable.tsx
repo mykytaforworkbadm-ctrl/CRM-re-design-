@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { EntityRegistryRow, EntityType } from '../types';
+import { formatClockTooltip } from '../utils/lockTiming';
 
 interface EntityRegistryTableProps {
   entityType: 'union' | 'rsp' | 'dept' | 'route';
   rows: EntityRegistryRow[];
   onOpenChangeLock: (row: EntityRegistryRow) => void;
   showOnlyLocked: boolean;
+  showScheduledLocks?: boolean;
 }
 
 export const EntityRegistryTable: React.FC<EntityRegistryTableProps> = ({
   entityType,
   rows,
   onOpenChangeLock,
-  showOnlyLocked
+  showOnlyLocked,
+  showScheduledLocks = false
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -50,6 +53,7 @@ export const EntityRegistryTable: React.FC<EntityRegistryTableProps> = ({
   const filteredRows = rows.filter((r) => {
     // Checkbox filter from parent
     if (showOnlyLocked && !r.isBlocked) return false;
+    if (showScheduledLocks && !r.isScheduled) return false;
 
     // Inline column filters
     if (colFilters.block !== '') {
@@ -547,7 +551,7 @@ export const EntityRegistryTable: React.FC<EntityRegistryTableProps> = ({
                           )}
                           {row.isScheduled && (
                             <span
-                              title={`Заплановане блокування ${row.startDate ? `з ${row.startDate}` : ''} ${row.endDate ? `по ${row.endDate}` : ''}`}
+                              title={formatClockTooltip(row.isBlocked, row.startDate, row.endDate)}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
